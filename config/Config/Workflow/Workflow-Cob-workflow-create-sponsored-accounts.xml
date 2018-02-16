@@ -162,7 +162,7 @@
      String departmentCode=identityModel.get("departmentId");
     //get date of birth
    Date birthDate =identityModel.get("cobDob");
-   java.text.DateFormat dateFormat= new java.text.SimpleDateFormat("MM-dd-yyyy");
+   java.text.DateFormat dateFormat= new java.text.SimpleDateFormat("MM/dd/yyyy");
    String cobDob= dateFormat.format(birthDate);
    wfcontext.setVariable("cobDob", cobDob);
    QueryOptions qo = new QueryOptions();
@@ -245,7 +245,7 @@ import sailpoint.object.Identity;
         Date date= new Date();
         //get expiration date as a string    
         Date expDate =identityModel.get("contractEndDate");
-        java.text.DateFormat dateFormat= new java.text.SimpleDateFormat("yyyy-MM-dd");
+        java.text.DateFormat dateFormat= new java.text.SimpleDateFormat("MM/dd/YYYY");
         String expDateStr= dateFormat.format(expDate);
         log.warn("expDateStr:"+expDateStr);
         //get start date as a string    
