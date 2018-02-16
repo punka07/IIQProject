@@ -1,0 +1,182 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-Form-CreateContractor-Confirmation">
+  <Attributes>
+    <Map>
+      <entry key="labelAlign" value="left"/>
+      <entry key="pageTitle" value="createcontractor_confirm_title"/>
+      <entry key="title" value="createcontractor_confirm_page_title"/>
+    </Map>
+  </Attributes>
+  <Section label="createcontractor_section_confirmcontractorinformation" type="datatable">
+    <Attributes>
+      <Map>
+        <entry key="hideNulls" value="true"/>
+      </Map>
+    </Attributes>
+    <Field displayName="gap_cia_ui_field_firstName" name="firstName" readOnly="true"/>
+    <Field displayName="contractor_field_middleinitial" name="middleName" readOnly="true"/>
+    <Field displayName="gap_cia_ui_field_lastName" name="lastName" readOnly="true"/>
+    <Field displayName="contractor_field_locationcode" name="locationCode" readOnly="true">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source>
+				    String locationCode = identityModel.get("locationCode");
+					if(!"Other".equals(locationCode)){
+						return false;
+					}
+					return true;
+					</Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Field>
+    <Field displayName="contractor_field_locationdescription" name="locationDesc" readOnly="true">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source>
+				    String locationDesc = identityModel.get("locationDesc");
+					if(!"Other".equals(locationDesc)){
+						return false;
+					}
+					return true;
+					</Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Field>
+    <Field displayName="contractor_field_otherlocationcode" name="otherLocation" readOnly="true">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source>
+				    String locationCode = identityModel.get("locationCode");
+					if("Other".equals(locationCode)){
+						return false;
+					}
+					return true;
+					</Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Field>
+    <Field displayName="contractor_field_country" name="c" readOnly="true">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source>
+				    String c = identityModel.get("c");
+					if(!"Other".equals(c)){
+						return false;
+					}
+					return true;
+					</Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Field>
+    <Field displayName="contractor_field_othercountrycode" name="otherCountry" readOnly="true">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source>
+				    String c = identityModel.get("c");
+					if("Other".equals(c)){
+						return false;
+					}
+					return true;
+					</Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Field>
+    <Field displayName="contractor_field_company" name="company" postBack="true" readOnly="true"/>
+    <Field displayName="contractor_field_othercompanyname" name="otherCompany" readOnly="true"/>
+    <Field defaultValue="Yes" displayName="contractor_field_emailrequired" name="gapEmailRequired" readOnly="true"/>
+    <Field displayName="Will the contractor work in GapTech?" name="gapTechContractor" readOnly="true"/>
+    <Field displayName="contractor_field_contractorcompanyemail" name="contractorCompanyEmail" readOnly="true">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source>
+					if (gapEmailRequired!=null){
+						if(gapEmailRequired.equals("No")){
+						return false;
+						}
+					}
+					return true;
+				</Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Field>
+    <Field displayName="contractor_field_manager" dynamic="true" name="manager" postBack="true" readOnly="true">
+      <Script>
+        <Source>
+			import sailpoint.object.Identity;
+			
+			Identity id = context.getObject(Identity.class,identityModel.get("managerNetworkID"));
+			return id.getDisplayName();		
+		</Source>
+      </Script>
+    </Field>
+    <Field displayName="contractor_field_contractenddate" dynamic="true" name="contractExpDate" readOnly="true">
+      <Script>
+        <Source>
+			import java.text.SimpleDateFormat;
+			
+			Date d = identityModel.get("contractEndDate");	
+			log.debug("Date : " + d.toString());
+			SimpleDateFormat f = new SimpleDateFormat("MM/dd/yyyy");
+			String s = f.format(d);
+			return s;
+		</Source>
+      </Script>
+    </Field>
+    <Field displayName="contractor_field_telephonenumber" name="telephoneNumber" readOnly="true"/>
+    <Field displayName="contractor_field_departmentnumber" dynamic="true" name="rcnDepartmentNumber" readOnly="true"/>
+  </Section>
+  <Section columns="20" label="Terms and Conditions" type="text">
+    <Field columnSpan="20" displayType="textarea" readOnly="true" value="Contractors are required to have a passed background screen prior to gaining access to the Gap Inc.Network.By selecting Acknowledge, you are confirming that you have validated with your vendor that a passed background screen is on file.If you have questions regarding this process, please contact background_screening@gap.com"/>
+  </Section>
+  <Section columns="20" label="Acknowledgement">
+    <Field columnSpan="7" displayName="Acknowledge" name="acknowledgement" type="boolean">
+      <ValidationScript>
+        <Source>
+   if(value == null)
+  return "Please acknowledge!";
+    
+       </Source>
+      </ValidationScript>
+    </Field>
+  </Section>
+  <Button action="next" label="contractor_button_submit"/>
+  <Button action="back" label="contractor_button_back"/>
+  <Button action="cancel" label="contractor_button_cancel"/>
+</Form>

@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-Form-SponseredAccountCreation-MainForm">
+  <Attributes>
+    <Map>
+      <entry key="pageTitle" value="Sponsored Account Creation Main Form"/>
+    </Map>
+  </Attributes>
+  <Section type="datatable">
+    <Field name="Message" required="true">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source><![CDATA[
+                      import sailpoint.object.*;
+                      import sailpoint.tools.*;
+                      import sailpoint.api.*;
+                      
+                    /*Logic to check if the identity has PeopleSoftHCM link*/
+                  Identity identObj = context.getObjectByName(Identity.class,launcher);
+                  Application appObj = context.getObjectByName(Application.class,"Dev_PeopleSoftHCM");
+                  IdentityService idService = new IdentityService(context);
+                  List appLinks = idService.getLinks(identObj,appObj);
+                  log.warn("appLinks::"+appLinks);
+                  if(appLinks.isEmpty() || launcherManager==null){
+                  
+                     return false;
+                  }else{
+                     return true;
+                  
+                  }
+                  
+ 						]]></Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+      <Script>
+        <Source><![CDATA[
+              
+        String str = "<font size='2' color='#ff0000'>";
+			  str = str + "Only full-time employees of the City of Boston are authorized to request Sponsored Accounts.If you believe you are receiving this message in error, please contact the DoIT Service Desk at 617-635-7378 or DoITServiceDesk@boston.gov.";
+			  str = str + "</font>";	
+			  return str;
+              
+              ]]></Source>
+      </Script>
+      <ValidationScript>
+        <Source><![CDATA[
+				   import sailpoint.tools.Message;
+				   import sailpoint.object.Identity;
+				   import sailpoint.tools.*;
+					List messages = new ArrayList();
+					Message msg = new Message();
+					if(!"".equals(value)){
+					  msg.setKey("errors");
+					}   		
+					messages.add(msg);
+					return messages;   
+				  ]]></Source>
+      </ValidationScript>
+    </Field>
+  </Section>
+  <Section name="Directions" type="datatable">
+    <Field name="Instructions" required="true">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source><![CDATA[
+                      import sailpoint.object.*;
+                      import sailpoint.tools.*;
+                      import sailpoint.api.*;
+                      
+                    /*Logic to check if the identity has PeopleSoftHCM link*/
+                  Identity identObj = context.getObjectByName(Identity.class,launcher);
+                  Application appObj = context.getObjectByName(Application.class,"Dev_PeopleSoftHCM");
+                  IdentityService idService = new IdentityService(context);
+                  List appLinks = idService.getLinks(identObj,appObj);
+                  log.warn("appLinks::"+appLinks);
+                  if(appLinks.isEmpty() || launcherManager==null){
+                  
+                     return true;
+                  }else{
+                     return false;
+                  
+                  }
+                  
+ 						]]></Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+      <Script>
+        <Source><![CDATA[
+          return "Please select the role type from the options below.";
+          ]]></Source>
+      </Script>
+    </Field>
+  </Section>
+  <Section>
+    <Field displayName="Role Type" displayType="combobox" name="accountType" required="true">
+      <AllowedValuesDefinition>
+        <Script>
+          <Source><![CDATA[
+      import sailpoint.object.Custom;
+      import sailpoint.object.CustomGlobal;
+      import sailpoint.object.Identity;
+      import java.util.List;
+			import sailpoint.object.Identity;
+			import sailpoint.object.Application;
+			import sailpoint.object.Link;
+			import sailpoint.api.IdentityService;
+
+            log.warn("launcher::"+launcher);   
+            String deptId="";
+            Identity launcherObj = context.getObjectByName(Identity.class,launcher);
+            if(launcherObj != null){
+                    deptId=(String) launcherObj.getAttribute("departmentCode");
+                    log.warn("deptId::"+deptId);
+            }
+            Custom custom = context.getObjectByName(Custom.class,"COB-Custom-UserTypes");
+            List sponseredAccounts = new ArrayList();
+            sponsoredAccounts = custom.get("Account Types");
+            List volOnlyDeptList =new ArrayList(Arrays.asList("111000","417000","150000","412000","163000"));
+            List boardAndVolDeptList =new ArrayList(Arrays.asList("112000","387000","300000","260000","404000","121000"));
+            List boardOnlyDeptList =new ArrayList(Arrays.asList("181000","414000","114000","252000","416000","156000","303000","131000","142000","782000","403000"));
+            List retireeSpOfDecRetBeneDeptList =new ArrayList(Arrays.asList("142000","782000"));
+       
+/**
+ * 
+ * Add logic to check the requester and accordingly display values in the drop-down
+ * 
+ **/
+            if(deptId != null){
+                     
+            if(volOnlyDeptList.contains(deptId)){
+            sponsoredAccounts.add("Volunteer");
+
+            }else if(boardAndVolDeptList.contains(deptId)){
+              sponsoredAccounts.add("Volunteer");
+              sponsoredAccounts.add("Board or Commission Member");
+          
+            }else if(boardOnlyDeptList.contains(deptId)){
+            
+              sponsoredAccounts.add("Board or Commission Member");
+            }else if(retireeSpOfDecRetBeneDeptList.contains(deptId)){
+             sponsoredAccounts.add("Spouse of Deceased Retiree");
+             sponsoredAccounts.add("Retiree");
+             sponsoredAccounts.add("Beneficiary");
+            }else{
+             return sponsoredAccounts;
+            }
+             return sponsoredAccounts;
+            }
+           
+          ]]></Source>
+        </Script>
+      </AllowedValuesDefinition>
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source><![CDATA[
+                      import sailpoint.object.*;
+                      import sailpoint.tools.*;
+                      import sailpoint.api.*;
+                      
+                    /*Logic to check if the identity has PeopleSoftHCM link*/
+                  Identity identObj = context.getObjectByName(Identity.class,launcher);
+                  Application appObj = context.getObjectByName(Application.class,"Dev_PeopleSoftHCM");
+                  IdentityService idService = new IdentityService(context);
+                  List appLinks = idService.getLinks(identObj,appObj);
+                  log.warn("appLinks::"+appLinks);
+                  if(appLinks.isEmpty() || launcherManager==null){
+                  
+                     return true;
+                  }else{
+                     return false;
+                  
+                  }
+                  
+ 						]]></Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Field>
+  </Section>
+  <Button action="cancel" label="Cancel"/>
+  <Button action="next" label="Next"/>
+</Form>

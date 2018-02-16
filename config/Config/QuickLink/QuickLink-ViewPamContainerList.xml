@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE QuickLink PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<QuickLink action="pamContainers" category="Access" messageKey="ui_pam_container_list" name="View PAM Container List" ordering="99">
+  <QuickLinkOptions allowSelf="true">
+    <DynamicScopeRef>
+      <Reference class="sailpoint.object.DynamicScope" name="PAMAdministrator"/>
+    </DynamicScopeRef>
+  </QuickLinkOptions>
+</QuickLink>

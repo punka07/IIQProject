@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" libraries="Identity" name="COB-Workflow-PSFIN-Update-Employee" type="Subprocess">
+  <Variable input="true" name="project" output="true">
+    <Description>Project that will be provisioned.</Description>
+  </Variable>
+  <Variable input="true" name="identityName"/>
+  <Variable input="true" name="source"/>
+  <Variable input="true" name="launcher"/>
+  <Variable name="plan">
+    <Description>The provisioning plan which is built during the workflow</Description>
+  </Variable>
+  <Variable name="result"/>
+  <Variable name="LCMEvent"/>
+  <Variable input="true" name="email"/>
+  <Variable input="true" name="changedAttrMap"/>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-AuditRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-SpAcctProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="cobUtils"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start" posX="17" posY="104" resultVariable="workflowLogPrefix">
+    <Script>
+      <Source><![CDATA[
+      	String workflowLogPrefix = workflow.getName() + "::" + identityName + "::"; 
+		return workflowLogPrefix;
+	  ]]></Source>
+    </Script>
+    <Transition to="PSFIN_Update_Plan"/>
+  </Step>
+  <Step icon="Message" name="PSFIN_Update_Plan" posX="117" posY="104" resultVariable="plan">
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="email" value="ref:email"/>
+    <Arg name="changedAttrMap" value="ref:changedAttrMap"/>
+    <Script>
+      <Source><![CDATA[
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import sailpoint.object.*;
+import sailpoint.api.*;
+import sailpoint.api.SailPointContext;
+import sailpoint.object.Identity;
+import sailpoint.object.ManagedAttribute;
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.AccountRequest;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import sailpoint.workflow.WorkflowContext;
+
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+
+        Identity ident=context.getObjectByName(Identity.class,identityName);  
+        //Update PSFIN account
+        String appName="Dev_PeopleSoftFinancials";
+        String psFinNative = getNativeIdentity(identityName,appName);
+        ProvisioningPlan.AccountRequest psFinAcctReq= new ProvisioningPlan.AccountRequest();
+        psFinAcctReq.setOperation(ProvisioningPlan.AccountRequest.Operation.Modify);
+        psFinAcctReq.setApplication(appName);
+        psFinAcctReq.setNativeIdentity(psFinNative);
+        
+          if(email != null){
+             //Get 'EmailAddresses' List
+        	List emailList = new ArrayList();
+			Map emailMap = new HashMap();
+			emailMap.put("EmailAddress", email);
+			emailList.set(0, emailMap);
+	    	psFinAcctReq.add(new ProvisioningPlan.AttributeRequest("EmailAddresses",ProvisioningPlan.Operation.Set,emailList));
+	    }
+             if(changedAttrMap.containsKey("displayName")){
+    
+        	psFinAcctReq.add(new ProvisioningPlan.AttributeRequest("UserDescription",ProvisioningPlan.Operation.Set,displayName));
+      	}
+        
+		    ProvisioningPlan plan = new ProvisioningPlan();
+            plan.setIdentity(ident);
+		    plan.add(psFinAcctReq);
+		    return plan;
+		]]></Source>
+    </Script>
+    <Transition to="PSFIN_Provision_Project"/>
+  </Step>
+  <Step action="compileProvisioningProject" icon="Default" name="PSFIN_Provision_Project" posX="267" posY="104" resultVariable="project">
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="project" value="ref:project"/>
+    <Arg name="noApplicationTemplates" value="true"/>
+    <Arg name="requireCreateTemplates" value="false"/>
+    <Arg name="optimisticProvisioning" value="false"/>
+    <Arg name="source" value="UI"/>
+    <Arg name="noLocking" value="true"/>
+    <Transition to="Provision_PSFIN"/>
+  </Step>
+  <Step action="call:provisionProject" icon="Provision" name="Provision_PSFIN" posX="258" posY="100">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="background" value="false"/>
+    <Transition to="Refresh_Identity"/>
+  </Step>
+  <Step action="call:refreshIdentity" icon="Task" name="Refresh_Identity" wait="1">
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="refreshLinks" value="true"/>
+    <Arg name="synchronizeAttributes" value="true"/>
+    <Arg name="forceLinkAttributePromotion" value="true"/>
+    <Arg name="promoteAttributes" value="true"/>
+    <Transition to="ProvisioningResultsPSFIN"/>
+  </Step>
+  <Step icon="Default" name="ProvisioningResultsPSFIN" posX="557" posY="24">
+    <Script>
+      <Source><![CDATA[
+import sailpoint.tools.Util;
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+		cobLog(logPrefix, "wfcontext.getStep().getName()=" + wfcontext.getStep().getName());
+		if (!Util.isEmpty(wfcontext.getRootWorkflowCase().getMessages())) {
+			for (Object msgObj : wfcontext.getRootWorkflowCase().getMessages()) {
+				sailpoint.tools.Message msg = (sailpoint.tools.Message) msgObj;
+				cobLog(logPrefix, msg.getMessage());
+			}
+		} else {
+			cobLog(logPrefix, "No Errors reported during provisioning");
+		}
+		cobLog(logPrefix, "Exit Step");
+    	]]></Source>
+    </Script>
+    <Transition to="Audit_PSFIN_Updaet"/>
+  </Step>
+  <Step icon="Audit" name="Audit_PSFIN_Updaet" posX="567" posY="104">
+    <Arg name="source" value="ref:source"/>
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="project" value="ref:project"/>
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+		Identity idn = context.getObject(Identity.class, identityName);
+		cobProvisioningAuditLog(logPrefix, source, launcher, project, idn);
+		cobLog(logPrefix, "Exit Step");
+	]]></Source>
+    </Script>
+    <Transition to="End"/>
+  </Step>
+  <Step icon="Stop" name="End" posX="717" posY="104">
+    <Script>
+      <Source><![CDATA[
+		cobLog(workflowLogPrefix, "Exit Workflow");
+	  ]]></Source>
+    </Script>
+  </Step>
+  <Step catches="complete" icon="Catches" name="HandleException" posX="37" posY="690">
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		try {
+			cobLog(logPrefix, "EnterStep");
+			if (!Util.isEmpty(wfcontext.getRootWorkflowCase().getMessages())) {
+				sendErrorEmailFromWorkflow(wfcontext);
+			}
+				cobLog(logPrefix, "ExitStep");
+			
+		} catch (Throwable e) {
+			cobLog(logPrefix, "Exception:");
+			e.printStackTrace();
+		}
+	  ]]></Source>
+    </Script>
+  </Step>
+</Workflow>

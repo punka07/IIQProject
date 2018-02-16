@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-Form-CreateContractor-Confirmation">
+  <Attributes>
+    <Map>
+      <entry key="labelAlign" value="left"/>
+      <entry key="pageTitle" value="Sponsored Account Creation Confirmation Form"/>
+    </Map>
+  </Attributes>
+  <Section name="Directions" type="datatable">
+    <Field displayName="Review Details" name="reviewDetails">
+      <Script>
+        <Source><![CDATA[
+      return "Please review the account details before submitting the request.";
+        ]]></Source>
+      </Script>
+    </Field>
+  </Section>
+  <Section>
+    <Field displayName="Role Type" name="accountType" readOnly="true"/>
+  </Section>
+  <Section columns="2" label="New Account Information">
+    <Field displayName="First Name" name="firstName" readOnly="true"/>
+    <Field displayName="Last Name" name="lastName" readOnly="true"/>
+    <Field displayName="Middle Name" name="middleInitial" readOnly="true"/>
+    <Field displayName="Sponsoring Manager" name="sponsorManager" readOnly="true"/>
+    <Field displayName="Department ID" name="departmentId" readOnly="true"/>
+    <Field displayName="Is COB E-mail Required(?)" name="cobEmailRequired" readOnly="true"/>
+    <Field displayName="Company E-Mail" name="companyEmail" readOnly="true">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source><![CDATA[
+				  String cobEmailRequired = identityModel.get("cobEmailRequired");
+				  if (cobEmailRequired!=null){
+					if(cobEmailRequired.equals("No")){
+					return false;
+				  }
+				}
+					return true;
+					]]></Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Field>
+    <Field displayName="Location" name="location" readOnly="true"/>
+    <Field displayName="Date Of Birth" name="cobDob" readOnly="true" type="date"/>
+    <Field displayName="Start Date" name="cobHireDate" readOnly="true" type="date"/>
+    <Field displayName="Account Expiration Date" name="contractEndDate" readOnly="true" type="date"/>
+    <Field displayName="Telephone No." name="phone" readOnly="true"/>
+  </Section>
+  <Button action="next" label="Submit"/>
+  <Button action="back" label="Back"/>
+  <Button action="cancel" label="Cancel"/>
+</Form>

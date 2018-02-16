@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-Form-CreateContractor-Manager-Approval">
+  <Attributes>
+    <Map>
+      <entry key="labelAlign" value="left"/>
+      <entry key="pageTitle" value="Sponsored Account Creation Manager Approval Form"/>
+    </Map>
+  </Attributes>
+  <Section name="Directions" type="datatable">
+    <Field displayName="Review and Approve/Reject" name="approveReject">
+      <Script>
+        <Source><![CDATA[
+      return "Please review the account details and approve/reject.";
+        ]]></Source>
+      </Script>
+    </Field>
+  </Section>
+  <Section>
+    <Field displayName="Account Type" name="accountType" readOnly="true"/>
+  </Section>
+  <Section columns="2" label="New Account Information">
+    <Field displayName="First Name" name="firstName" readOnly="true"/>
+    <Field displayName="Last Name" name="lastName" readOnly="true"/>
+    <Field displayName="Middle Name" name="middleInitial" readOnly="true"/>
+    <Field displayName="Sponsoring Manager" name="sponsorManager" readOnly="true"/>
+    <Field displayName="Department ID" name="departmentId" readOnly="true"/>
+    <Field displayName="Is COB E-mail Required(?)" name="cobEmailRequired" readOnly="true"/>
+    <Field displayName="Company E-Mail" name="companyEmail" readOnly="true">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source><![CDATA[
+				  String cobEmailRequired = identityModel.get("cobEmailRequired");
+				  if (cobEmailRequired!=null){
+					if(cobEmailRequired.equals("No")){
+					return false;
+				  }
+				}
+					return true;
+					]]></Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Field>
+    <Field displayName="Location" name="location" readOnly="true"/>
+    <Field displayName="Date Of Birth" name="cobDob" readOnly="true" type="date"/>
+    <Field displayName="Start Date" name="cobHireDate" readOnly="true" type="date"/>
+    <Field displayName="Account Expiration Date" name="contractEndDate" readOnly="true" type="date"/>
+    <Field displayName="Telephone No." name="phone" readOnly="true"/>
+    <Field displayName="Comments" name="managerComments" type="string">
+      <ValidationScript>
+        <Source><![CDATA[
+        if(value==null){
+        
+           return "Please enter rejection comments.";
+        }
+        ]]></Source>
+      </ValidationScript>
+    </Field>
+  </Section>
+  <Button action="next" label="Approve" parameter="requestRejected" skipValidation="true" value="false"/>
+  <Button action="next" label="Reject" parameter="requestRejected" value="true"/>
+  <Button action="cancel" label="Cancel"/>
+</Form>

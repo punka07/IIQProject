@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" libraries="Identity" name="COB-Workflow-IdentityVerification">
+  <Variable initializer="string:true" name="transient"/>
+  <Variable name="launcher"/>
+  <Variable name="identityName"/>
+  <Variable name="plan"/>
+  <Variable name="emplId"/>
+  <Variable name="firstName"/>
+  <Variable name="lastName"/>
+  <Variable name="ssn"/>
+  <Variable name="dob"/>
+   <Variable initializer="identityModel" name="basePath">
+    <Description>The formpath to the link we are interested in editing.</Description>
+  </Variable>
+  <Variable initializer="string:true" name="trace"/>
+  <Description>Identity Verification Policy Workflow</Description>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-cobUtils"/>
+    <Reference class="sailpoint.object.Rule" name="cobUtils"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-ProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-AuditRuleLibrary"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start" posX="27">
+  <Transition to="Build Identity Model"/>
+  </Step>
+  <Step action="call:getIdentityModel" icon="Task" name="Build Identity Model" posX="146" resultVariable="identityModel">
+    <Arg name="identityId">
+      <Script>
+        <Source><![CDATA[
+				return null;
+		  ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="identityName"/>
+    <Description>
+         For now, build a map of the data. Eventually this will use the Identity
+         transformer to build a Map based on an existing identityName, or 
+         Identity object.
+      </Description>
+    <Transition to="SelectForm"/>
+  </Step>
+  <Step icon="Message" name="SelectForm" posX="115" posY="10">
+    <Approval name="IdentityVerification-Main-Form" owner="ref:launcher" return="identityName,emplId" send="launcher">
+      <Form name="IdentityVerification-Main-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Identity Verification Main Form"/>
+          </Map>
+        </Attributes>
+        <Section label="Instructions" name="userInstructions" type="text">
+          <Field name="Directions" value="Enter Employee/User ID provided by the requester"/>
+        </Section>
+        <Section>
+          <Field displayName="Employee/User ID" name="emplId" required="true" type="string">
+            <ValidationScript>
+              <Source><![CDATA[
+          import sailpoint.object.Identity;
+
+Identity ident =context.getObjectByName(Identity.class, value);
+if(ident != null){
+	return null;
+	}else{
+	
+	return "This employee/user ID does not exist.";
+	}
+          ]]></Source>
+            </ValidationScript>
+          </Field>
+        </Section>
+        <Button action="next" label="Next"/>
+        <Button action="cancel" label="Cancel"/>
+      </Form>
+    </Approval>
+    <Transition to="Start" when="!approved"/>
+    <Transition to="Check If Inactive User"/>
+  </Step>
+  <Step name="Check If Inactive User" posX="931" posY="382" resultVariable="isDisabled">
+    <Arg name="emplId" value="ref:emplId"/>
+    <Script>
+      <Source><![CDATA[
+     import sailpoint.object.Identity;
+     
+     	boolean isDisabled=false;
+		Identity ident=context.getObjectByName(Identity.class,emplId); 
+		if(ident != null) {
+			if(ident.isDisabled() || ident.isDisabled()) {
+				isDisabled=true;
+			}
+		}
+		return isDisabled; 
+     ]]></Source>
+    </Script>
+    <Transition to="User Inactive/Disabled Message" when="isDisabled"/>
+    <Transition to="Check User Type"/>
+  </Step>
+  <Step name="Check User Type" posX="719" posY="208">
+    <Arg name="emplId" value="ref:emplId"/>
+    <Script>
+      <Source><![CDATA[
+ import sailpoint.object.Identity;
+ 
+		String psNativeIdent=getNativeIdentity(emplId, "Dev_PeopleSoftHCM");
+		boolean isEmployee=false;
+		Identity identObj = context.getObjectByName(Identity.class,emplId);
+		if(psNativeIdent != null) {
+			isEmployee=true;
+		}
+		log.warn("isEmployee:"+isEmployee);
+		wfcontext.setVariable("isEmployee",isEmployee);
+		
+
+  ]]></Source>
+    </Script>
+    <Transition to="Verify User Identity"/>
+  </Step>
+  <Step icon="Message" name="User Inactive/Disabled Message" posX="212" posY="10">
+    <Approval name="User Inactive/Disabled Message-Form" owner="ref:launcher" return="" send="emplId">
+      <Form name="User Inactive/Disabled Message-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="User Inactive/Disabled Message-Form"/>
+          </Map>
+        </Attributes>
+        <Section type="datatable">
+          <Field name="Message" required="true">
+            <Script>
+              <Source><![CDATA[
+              
+              String str = "<font size='2' color='#ff0000'>";
+		 	  str = str+"The user is disabled or inactive.";
+			  str = str + "</font>";	
+			  return str;
+              
+              ]]></Source>
+            </Script>
+          </Field>
+        </Section>
+        <Button action="next" label="Go to Homepage"/>
+      </Form>
+    </Approval>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Message" name="Verify User Identity" posX="145" posY="304">
+    <Approval name="IdentityVerification-Form-Approval" owner="ref:launcher" return="emplId,fullName,ssn,dob" send="identityName,emplId,isEmployee">
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+      <Arg name="workItemForm" value="COB-Form-IdentityVerification"/>
+    </Approval>
+    <Transition to="Stop" when="!approved"/>
+    <Transition to="Confirm User Input"/>
+    </Step>
+    <Step icon="Message" name="Confirm User Input" posX="145" posY="304">
+    <Approval name="IdentityVerification-Confirmation-Form-Approval" owner="ref:launcher" return="" send="identityName,emplId,isEmployee,fullName,ssn,dob">
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+      <Arg name="workItemForm" value="COB-Form-IdentityVerification-Confirmation"/>
+    </Approval>
+    <Transition to="Perform validation" when="approved"/>
+    <Transition to="Verify User Identity" when="!approved"/>
+  </Step>
+  <Step name="Perform validation" posX="407" posY="225" resultVariable="verificationMap">
+    <Arg name="emplId" value="ref:emplId"/>
+    <Arg name="fullName" value="ref:fullName"/>
+    <Arg name="dob" value="ref:dob"/>
+    <Arg name="ssn" value="ref:ssn"/>
+    <Script>
+      <Source><![CDATA[
+ import sailpoint.object.Identity;
+ import java.util.Map;
+ import java.util.HashMap;
+ 
+		Map verificationMap = new HashMap();
+		Identity identObj = context.getObjectByName(Identity.class,emplId);
+		String realFullName=identObj.getFirstname()+" "+identObj.getFirstname();
+	
+		//String cobDob ="1990-01-01";
+			String cobDob="";
+		String realBirthDate="";
+		String realSsn="";
+		if(identObj.getAttributes().containsKey("cobDob")) {
+		cobDob = identObj.getStringAttribute("cobDob");
+		realBirthDate =cobDob.substring(0,5);
+		}
+		if(identObj.getAttributes().containsKey("ssn")) {
+	
+		realSsn =identObj.getStringAttribute("ssn");
+		}
+		if(isEmployee) {
+			if(!realFullName.equalsIgnoreCase(fullName)|| !realSsn.equalsIgnoreCase(ssn) ) {
+			    verificationMap.put("isNotVerfied",true);
+				verificationMap.put("message", "The identity verification process is not successful.");
+			}else{
+				verificationMap.put("message", "The identity verification process is successful.");
+			}
+		}else {
+			if(!realFullName.equalsIgnoreCase(fullName) || !realBirthDate.equalsIgnoreCase(dob) ) {
+				 verificationMap.put("isNotVerfied",true);
+				verificationMap.put("message", "The identity verification process was not successful.");
+			}else{
+				verificationMap.put("message", "The identity verification process is successful.");
+			}
+		}
+		
+		return verificationMap;
+		
+
+  ]]></Source>
+    </Script>
+    <Transition to="Verification Result"/>
+  </Step>
+  <Step icon="Message" name="Verification Result" posX="117" posY="171">
+    <Approval name="Verification-Result-Form" owner="ref:launcher" return="" send="verificationMap">
+      <Form name="Verification-Result-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Verification-Result-Form"/>
+          </Map>
+        </Attributes>
+        <Section type="datatable">
+          <Field name="Message" required="true">
+            <Script>
+              <Source><![CDATA[
+              
+              String str = "<font size='2' color='#ff0000'>";
+		 	  str = str+verificationMap.get("message");
+			  str = str + "</font>";	
+			  return str;
+              
+              ]]></Source>
+            </Script>
+          </Field>
+        </Section>
+        <Button action="next" label="Go to Homepage"/>
+      </Form>
+    </Approval>
+    <Transition to="Prepare Email Sending" when="approved"/>
+    <Transition to="Stop" when="!approved"/>
+  </Step>
+  <Step name="Prepare Email Sending" posX="1063" posY="245" wait="1">
+    <Arg name="verificationMap"/>
+    <Transition to="Send Failed Attempt Email Notification" when="return verificationMap.get(&quot;isNotVerfied&quot;);"/>
+    <Transition to="Stop"/>
+  </Step>
+  <Step name="Send Failed Attempt Email Notification" posX="748" posY="16">
+    <Arg name="emplId" value="ref:emplId"/>
+    <Script>
+      <Source><![CDATA[
+ import sailpoint.object.Identity;
+ import sailpoint.object.*;
+  
+  
+  	Identity reqIdent = context.getObjectByName(Identity.class,emplId);
+	String reqEmail = reqIdent.getEmail();
+	String templateName ="COB-EmailTemplate-IdentityVerification-AttemptFailed";
+	EmailTemplate template =context.getObjectByName(EmailTemplate.class,templateName);
+	EmailOptions emailOptions = new EmailOptions();
+	emailOptions.setVariable("requesterDisplayName",reqIdent.getDisplayName() );
+	if(reqEmail != null) {
+	emailOptions.setTo(reqEmail);
+	}
+	emailOptions.setSendImmediate(true);
+	emailOptions.setNoRetry(true);
+	context.sendEmailNotification(template, emailOptions);
+  ]]></Source>
+    </Script>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Stop" name="Stop" posX="481" posY="8"/>
+  <Step catches="complete" icon="Catches" name="HandleException" posX="37" posY="690">
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		try {
+		
+				cobLog(logPrefix, "EnterStep");
+				if(!wfcontext.getWorkflowCase().getErrors().isEmpty()){
+				sendErrorEmailFromWorkflow(wfcontext);
+				}
+				cobLog(logPrefix, "ExitStep");
+			}
+		 catch (Throwable e) {
+			cobLog(logPrefix, "Exception:");
+			e.printStackTrace();
+		}
+	
+       ]]></Source>
+    </Script>
+  </Step>
+</Workflow>

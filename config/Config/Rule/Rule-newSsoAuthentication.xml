@@ -1,0 +1,140 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE sailpoint PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<sailpoint><Rule language="beanshell" name="New SSO Authentication" type="SSOAuthentication">
+  <Description>A rule used to perform SSO authentication.</Description>
+<Signature returnType="SailPointObject">
+<Inputs>
+<Argument type="httpRequest">
+<Description>
+A javax.servlet.http.HttpServletRequest object containing the SSO data.
+</Description>
+</Argument></Inputs>
+<Returns>
+<Argument type="identity Or Link">
+<Description>
+The Identity or Link that has been authenticated via SSO.
+          Starting in 6.1 this rule can return either the Identity or
+          the specific Link that was used to authenticate the user.  
+          Returning the Link is the preferred way as it provides the
+          exact account back to the server side which can be helpful
+          when collecting authentication for electronic signatures.
+</Description>
+</Argument></Returns>
+</Signature>
+<!--ReferencedRules>
+  <Reference class="sailpoint.object.Rule" name=""/>
+</ReferencedRules-->
+  <Source><![CDATA[
+/*******
+ *                                                                                           *
+ * Generated: Thu Feb 15 13:44:08 EST 2018                                                   *
+ * Rule: SSO Authentication Template                                                         *
+ * Description: SSO Authentication Template                                                  *
+ * Inputs:                                                                                   *
+ *     httpRequest - A javax.servlet.http.HttpServletRequest object containing the SSO data. *
+ * Returns:                                                                                  *
+ *     identity Or Link - The Identity or Link that has been authenticated via SSO.          *
+ *           Starting in 6.1 this rule can return either the Identity or                     *
+ *           the specific Link that was used to authenticate the user.                       *
+ *           Returning the Link is the preferred way as it provides the                      *
+ *           exact account back to the server side which can be helpful                      *
+ *           when collecting authentication for electronic signatures.                       *
+ ******/
+serilog=org.apache.commons.logging.LogFactory.getLog("SERI.Rule.ssoAuthenticationTemplate");
+serilog.debug("----Rule Start----");
+
+
+import sailpoint.object.Application;
+        import sailpoint.object.Identity;
+        import sailpoint.object.Link;
+        import sailpoint.tools.GeneralException;
+        import sailpoint.api.Correlator;
+        import sailpoint.api.SailPointContext;
+
+        import javax.servlet.http.HttpServletRequest;
+        import javax.servlet.http.HttpSession;
+
+        private String COOKIE_TOKEN = "SMSESSION";
+        private String COOKIE = "cookie";
+        private String TRANSACTION_ID = "smtransactionid";
+        private String SERVER_SESSION = "smserversessionid";
+        private String AUTHDIR_OID = "smauthdiroid";
+        private String AUTHDIR_SERVER = "smauthdirserver";
+        private String AUTHDIR_NAME = "smauthdirname";
+        private String USER_DN = "smuserdn";
+
+        private String[] HEADER_ATTRS = { TRANSACTION_ID, SERVER_SESSION, AUTHDIR_SERVER, AUTHDIR_NAME, USER_DN, COOKIE };
+
+        private String TEST_AUTHDIR ="HouseboatSunDS";
+        private String TEST_IIQ_APP ="ssoapp";
+
+        /**
+         * Make sure we the values we know about.. this may vary with
+         * various versions of SiteMinder.
+         */
+        private void validateHeader() {
+            for ( String header : HEADER_ATTRS ) {
+                String value = httpRequest.getHeader(header);
+                if ( value == null ) {
+                    throw new GeneralException("Invalid Site-Minder session."+
+                               " Missing variable [" +header+"]");
+                }
+            }
+        }
+
+        /**
+         * Use the authorization directory that siteminder put in
+         * the header. Attempt to map the authdir to a SailPoint Application
+         * where accounts for the authdir have been aggregated.
+         */
+        private Application mapAuthDirToApp(SailPointContext context,
+                                            String authDir)
+            throws GeneralException {
+
+            Application app = null;
+            if ( authDir.compareTo(TEST_AUTHDIR) == 0 ) {
+                app = context.getObject(Application.class,TEST_IIQ_APP);
+            } else {
+                throw new GeneralException("Unable to map ["+authDir+
+                         "] to an application defined in IdentityIQ.");
+            }
+            return app;
+        }
+
+        /**
+         * For debug purposes.
+         */
+        private void dumpHeader() {
+            Enumeration headerNames = httpRequest.getHeaderNames();
+            if ( headerNames != null ) {
+                while ( headerNames.hasMoreElements() ) {
+                    String header = (String)headerNames.nextElement();
+                    String value = httpRequest.getHeader(header);
+                    System.out.println("HEADER["+header+"] VALUE["+ value+"]");
+                }
+            }
+        }
+
+//        dumpHeader();
+        // Make sure everything we need is there, along with a few
+        // other interesting values
+        validateHeader();
+
+        String userDn = httpRequest.getHeader(USER_DN);
+        String authServer = httpRequest.getHeader(AUTHDIR_NAME);
+
+        // Ask the correlator to find us the Link associated with the
+        // userDn we stripped from the header
+        Application app = mapAuthDirToApp(ctx,authServer);
+        Correlator correlator = new Correlator(ctx);
+        // second argument is instance which is not used in this example
+        Link link = correlator.findLinkByNativeIdentity(app, null, userDn);
+
+        if ( link == null ) {
+            throw new GeneralException("Unable to find Link associated with ["
+                           +userDn+"] on application ["+app.getName()+"]");
+        }
+        return link;
+  ]]></Source>
+</Rule>
+</sailpoint>

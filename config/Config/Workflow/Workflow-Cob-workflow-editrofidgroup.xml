@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" libraries="Identity" name="COB-Workflow-EditROFIDGroup">
+  <Variable initializer="string:true" name="transient"/>
+  <Variable name="launcher"/>
+  <Variable name="LDAPGroup"/>
+  <Variable name="identityName"/>
+  <Variable name="plan"/>
+  <Variable name="addedMembers"/>
+  <Variable name="removedMembers"/>
+  <Variable name="groupModel"/>
+  <Variable initializer="string:true" name="trace"/>
+  <Description>ROFID - Group Edit Form.</Description>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-ROFID-Group-Workflow"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-cobUtils"/>
+    <Reference class="sailpoint.object.Rule" name="cobUtils"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-ProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-AuditRuleLibrary"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start" posX="28" posY="10">
+    <Transition to="SelectForm"/>
+  </Step>
+  <Step icon="Message" name="SelectForm" posX="115" posY="10">
+    <Approval name="LDAP-Form" owner="string:spadmin" return="identityName,LDAPGroup" send="launcher">
+      <Form name="LDAP-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Edit ROFID Group"/>
+          </Map>
+        </Attributes>
+        <Button action="next" label="Next"/>
+        <Button action="cancel" label="Cancel Request"/>
+        <Section label="Instructions" name="userInstructions" type="text">
+          <Field name="Directions" value="Select a Group you are designated owner of from the drop-down below."/>
+        </Section>
+        <Section columns="1" label="Select a Group">
+          <Field displayName="Group" dynamic="true" name="LDAPGroup" required="true" type="ManagedAttribute">
+            <Script>
+              <Source><![CDATA[
+  
+      import sailpoint.object.Identity;
+		  import java.util.List;
+		  import sailpoint.tools.Util;
+                
+         
+        /**Only ROFID Groups**/       
+        String filterString="application.name==\"Dev_ROFID\""+ " && owner.name == \"" + launcher + "\"" + " && type == \"group\"";
+                log.warn("filterString::"+filterString);
+        field.setFilterString(filterString);
+
+              ]]></Source>
+            </Script>
+          </Field>
+        </Section>
+      </Form>
+    </Approval>
+    <Description>Present a form to the user and gather their input. Validate the entered LDAP group against our known LDAP entries internally.</Description>
+    <Transition to="Start" when="!approved"/>
+    <Transition to="Modify Group Membership"/>
+  </Step>
+  <Step icon="Message" name="Modify Group Membership" posX="212" posY="10">
+    <Approval name="LDAP-Form" owner="string:spadmin" return="addedMembers,removedMembers" send="identityName,LDAPGroup">
+      <Form name="LDAP-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Modify Group Membership"/>
+          </Map>
+        </Attributes>
+        <Button action="next" label="Next"/>
+        <Button action="back" label="Back"/>
+        <Button action="cancel" label="Cancel Request"/>
+        <Section columns="2" label="Requested ROFID Group Details">
+          <Field displayName="Selected Group" name="LDAPGroup" readOnly="true" required="true" type="string" value="ref:LDAPGroup"/>
+          <Field dependencies="LDAPGroup" displayName="Add New Members" multi="true" name="addedMembers" type="identity">
+            <Attributes>
+              <Map>
+                <entry key="valueProperty" value="name"/>
+              </Map>
+            </Attributes>
+            <Script>
+              <Source><![CDATA[
+      import sailpoint.object.Identity;
+		  import java.util.List;
+		  import sailpoint.tools.Util;
+                
+                log.warn("LDAPGroup::"+LDAPGroup);
+         
+        /**Add Only active users with ROFID accounts**/       
+        String filterString="links.application.name==\"Dev_ROFID\""+"&&inactive==false";
+        field.setFilterString(filterString);
+                
+              ]]></Source>
+            </Script>
+          </Field>
+          <Field dependencies="LDAPGroup" displayName="Remove Current Members" multi="true" name="removedMembers" type="identity">
+            <Attributes>
+              <Map>
+                <entry key="valueProperty" value="name"/>
+              </Map>
+            </Attributes>
+            <Script>
+              <Source><![CDATA[
+      import sailpoint.object.Identity;
+		  import java.util.List;
+		  import sailpoint.tools.Util;
+                
+         
+        /**Add Only active users with ROFID accounts**/       
+        String filterString="links.application.name==\"Dev_ROFID\""+"&&inactive==false";
+        field.setFilterString(filterString);
+                
+        
+                                
+               
+              ]]></Source>
+            </Script>
+          </Field>
+        </Section>
+      </Form>
+    </Approval>
+    <Description>Present user with a confirmation form before creating the group.</Description>
+    <Transition to="SelectForm" when="!approved"/>
+    <Transition to="Modify Group Membership" when="approved"/>
+  </Step>
+  <Step icon="Message" name="Modify Group Membership" posX="212" posY="10">
+    <Approval name="LDAP-Form" owner="string:spadmin" return="members" send="identityName,LDAPGroup,addedMembers,removedMembers">
+      <Form name="LDAP-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Confirm Group Membership Changes"/>
+          </Map>
+        </Attributes>
+        <Button action="next" label="Submit"/>
+        <Button action="back" label="Back"/>
+        <Button action="cancel" label="Cancel Request"/>
+        <Section columns="2" label="Requested Group Membership Changes">
+          <Field displayName="Selected Group" name="LDAPGroup" readOnly="true" required="true" type="string" value="ref:LDAPGroup"/>
+          <Field displayName="Added New Members" multi="true" name="addedMembers" readOnly="true" type="identity" value="ref:addedMembers">
+            <Attributes>
+              <Map>
+                <entry key="valueProperty" value="name"/>
+              </Map>
+            </Attributes>
+          </Field>
+          <Field dependencies="LDAPGroup" displayName="Removed Current Members" multi="true" name="removedMembers" readOnly="true" type="identity" value="ref:removedMembers">
+            <Attributes>
+              <Map>
+                <entry key="valueProperty" value="name"/>
+              </Map>
+            </Attributes>
+          </Field>
+        </Section>
+      </Form>
+    </Approval>
+    <Description>Present user with a confirmation form before modifying the group.</Description>
+    <Transition to="Modify Group Membership" when="!approved"/>
+    <Transition to="Build Plan" when="approved"/>
+  </Step>
+  <Step icon="Task" name="Build Plan" posX="276" posY="107" resultVariable="plan">
+    <Arg name="approver1" value="ref:approver1"/>
+    <Arg name="members" value="ref:members"/>
+    <Description>This step will construct a provisioning plan with the requested LDAP groups.</Description>
+    <Script>
+      <Source><![CDATA[
+
+
+//
+// Imports for Provisioning Plan, Object Request
+//
+
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.ObjectRequest ;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import java.util.List;
+
+//
+// Constants for this example
+// 
+
+String appName = "Dev_ROFID";
+String baseDN = ",cn=Groups,dc=boston,dc=cob";
+String attrName = "groups";
+boolean debug = true;
+
+
+if (debug) {
+              System.out.println("Starting to create ObjectRequest Plan for " + appName + " for baseDN=" + baseDN); 
+}
+
+ProvisioningPlan plan = new ProvisioningPlan();
+
+if (debug) {
+              System.out.println("Starting to build plan..."); 
+}
+
+ObjectRequest or = new ObjectRequest(); 
+
+if (debug) {
+              System.out.println("Created Object Request..."); 
+}
+List uniqueMembers= new ArrayList();
+
+for(String idName: members){
+    String nativeIdentity= getLinkNativeIdentity(idName);
+    uniqueMembers.add(nativeIdentity);
+
+}
+or.setOp(ProvisioningPlan.ObjectOperation.Create); 
+or.setType("group"); 
+or.setApplication(appName); 
+or.add(new AttributeRequest("sysAttribute",attrName));
+or.add(new AttributeRequest("sysDisplayName",LDAPGroupName));
+or.add(new AttributeRequest("sysOwner",approver1));
+or.add(new AttributeRequest("sysAttribute",attrName));
+or.add(new AttributeRequest("sysRequestable",true));
+or.add(new AttributeRequest("sysManagedAttributeType","Entitlement"));
+or.add(new AttributeRequest("dn","cn=" + LDAPGroupName + baseDN));
+or.add(new AttributeRequest("description",description));
+or.add(new AttributeRequest("cn",LDAPGroupName));
+or.add(new AttributeRequest("uniquemember",ProvisioningPlan.Operation.Add,uniqueMembers));
+//
+// ObjectRequest created, now add to the Plan
+// Add a requester also
+//
+
+plan.addObjectRequest(or);
+plan.addRequester(context.getObjectByName(Identity.class,context.getUserName())); 
+
+//
+// output the Provisioning Plan prior to passing off to be provisioned. 
+//
+
+if (debug) {
+             System.out.println("Provisioning Plan = " + plan.toXml());
+}
+
+//
+// return the plan so it's available in the workflow for later. 
+//
+
+return plan;
+
+
+]]></Source>
+    </Script>
+    <Transition to="Provision Group"/>
+  </Step>
+  <Step icon="Task" name="Provision Group" posX="403" posY="107">
+    <Arg name="trace" value="ref:trace"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Description>Call the "built-in" entitlement update workflow with our calculated plan in order to provision both the LDAP group AND the internal Entitlement Catalog entry.</Description>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="Entitlement Update"/>
+    </WorkflowRef>
+    <Transition to="Send Confirmation Email"/>
+  </Step>
+  <Step name="Send Confirmation Email">
+    <Arg name="launcher" value="ref:launcher"/>
+    <Script>
+      <Source><![CDATA[
+    import sailpoint.object.*;
+    import sailpoint.api.*;
+    
+    
+        Identity ownerIdent= context.getObjectByName(Identity.class,approver1);
+        String ownerName= ownerIdent.getDisplayName();
+        List memberNames= new ArrayList();
+        for(String idName: members){
+             Identity memIdent= context.getObjectByName(Identity.class,idName);
+             memberNames.add(memIdent.getDisplayName());
+        }
+        String successNotifyTemplate= "COB-EmailTemplate-ROFIDGroup-Success";
+        EmailTemplate template = context.getObjectByName(EmailTemplate.class,successNotifyTemplate);
+        Identity launcherIdent = context.getObjectByName(Identity.class,launcher);
+        String toEmail= launcherIdent.getEmail();
+        EmailOptions emailOptions= new EmailOptions();
+        emailOptions.setSendImmediate(true);
+        emailOptions.setVariable("groupName",LDAPGroupName);
+        emailOptions.setVariable("members",memberNames);
+        emailOptions.setVariable("owner",ownerName);
+        emailOptions.setVariable("launcherName",launcherIdent.getDisplayName());
+        emailOptions.setNoRetry(true);
+        if(toEmail != null){
+        emailOptions.setCc(toEmail);
+        }
+        emailOptions.setTo("pankaj@likemindsconsulting.com");
+        context.sendEmailNotification(template,emailOptions);
+    ]]></Source>
+    </Script>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Stop" name="Stop" posX="481" posY="8"/>
+  <Step catches="complete" icon="Catches" name="HandleException" posX="37" posY="690">
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		try {
+		
+				cobLog(logPrefix, "EnterStep");
+				if(!wfcontext.getWorkflowCase().getErrors().isEmpty()){
+				sendErrorEmailFromWorkflow(wfcontext);
+				}
+				cobLog(logPrefix, "ExitStep");
+			}
+		 catch (Throwable e) {
+			cobLog(logPrefix, "Exception:");
+			e.printStackTrace();
+		}
+	
+       ]]></Source>
+    </Script>
+  </Step>
+</Workflow>

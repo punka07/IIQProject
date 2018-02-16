@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE EmailTemplate PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<EmailTemplate name="COB-EmailTemplate-Manager-SponsoredAcctExpiration-Reminder">
+  <Body>
+&lt;html&gt;
+&lt;body&gt;
+&lt;span &gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Hello $identityModel.get("requesterDisplayName") &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;The sponsored account of the type $accountType for $identityDisplayName that you requested will expire in two weeks. &amp;nbsp;Please find the request details below:&lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Name: $identityModel.get("firstName") $identityModel.get("lastName") &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;End Date :$spTools.formatDate($identityModel.get("contractEndDate"),"yyyy-MM-dd") &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;If you need to extend this sponsored account please do that via the AccessBoston portal &amp;nbsp;[clicking here - URL?]. If this end date is correct, no action is required. &amp;nbsp;If the account is already no longer required, please let us know so that we can terminate access.&lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Sincerely, AccessBoston&lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Questions about the sponsored account creation process should be directed to the DoIT Service Desk via 617-635-7378 or &lt;/span&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;BPS Technology Help Desk Support &amp;nbsp;at 617-635-9200.&lt;/span&gt;
+&lt;/p&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Please Note: this is an auto-generated email, please do not reply to this email. &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 8pt; font-family: Calibri; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;The information contained in this communication, including any attachments, is intended solely for the use of the individual or entity to whom it is addressed and others authorized to receive it. It may contain confidential or legally privileged information. If you are not the intended recipient you are hereby notified that any disclosure, copying, distribution or taking any action in reliance on the contents of this information is strictly prohibited and may be unlawful. If you have received this communication in error, please notify us immediately by responding to this email and then delete it from your system. The sender is neither liable for the proper and complete transmission of the information contained in this communication nor for any delay in its receipt.&lt;/span&gt;
+&lt;/p&gt;
+&lt;div&gt;
+&lt;span style="font-size: 8pt; font-family: Calibri; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;
+&lt;br&gt;
+&lt;/span&gt;
+&lt;/div&gt;
+&lt;/span&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</Body>
+  <Subject>Subject: NOTIFICATION: Sponsored Account Ending in 2 Weeks</Subject>
+</EmailTemplate>

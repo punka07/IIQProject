@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" name="COB-Workflow-Mover" type="IdentityLifecycle">
+  <Variable input="true" name="trigger"/>
+  <Variable input="true" name="event"/>
+  <Variable initializer="joiner" name="LCMEvent"/>
+  <Variable initializer="false" name="trace"/>
+  <Variable input="true" name="identityName"/>
+  <Variable input="true" name="launcher"/>
+  <Variable input="true" name="source">
+    <Script>
+      <Source><![CDATA[
+		return workflow.getName();
+      ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="plan"/>
+  <Variable name="project"/>
+  <Variable name="hasNoAD">
+    <Script>
+      <Source><![CDATA[
+
+import sailpoint.object.Identity;
+import sailpoint.object.Link;
+import java.util.List;
+      
+        
+        boolean hasNoAD = true;
+        Identity identity = context.getObjectByName(Identity.class,identityName);     
+        if(identity != null){
+        List allLinks = identity.getLinks();
+       
+        for(Link link:allLinks){
+            if(link.getApplication().getName().equals("Dev_CityHall_AD") || link.getApplication().getName().equals("Dev_BPS_AD")){
+                hasNoAD = false;
+                break;
+            }
+            
+        }
+      }
+      return hasNoAD;
+      
+    ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="hasNoHDAP">
+    <Script>
+      <Source><![CDATA[
+
+import sailpoint.object.Identity;
+import sailpoint.object.Link;
+import java.util.List;
+      
+        
+        boolean hasNoHDAP = true;
+        Identity identity = context.getObjectByName(Identity.class,identityName);     
+        if(identity != null){
+        List allLinks = identity.getLinks();
+       
+        for(Link link:allLinks){
+            if(link.getApplication().getName().equals("Dev_HDAP")){
+                hasNoHDAP = false;
+                break;
+            }
+            
+        }
+      }
+      return hasNoHDAP;
+      
+    ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="isBPSEmployee">
+    <Script>
+      <Source><![CDATA[
+     
+    Identity ident = context.getObjectByName(Identity.class,identityName);    
+    boolean isBPSEmployee = isBPSRequest(ident);
+    return isBPSEmployee;
+    
+     ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="isCHEmployee">
+    <Script>
+      <Source><![CDATA[
+        import sailpoint.object.Identity;
+
+        Identity ident = context.getObjectByName(Identity.class,identityName);
+        return isCHRequest(ident);
+     ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="isHDAPProv">
+    <Script>
+      <Source><![CDATA[
+      
+      boolean isHDAPProv=false;
+      if( hasNoHDAP && isCHEmployee ){
+      isHDAPProv=true;
+      }
+      
+      return isHDAPProv;
+    ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="hasFINAcct">
+    <Script>
+      <Source><![CDATA[
+	boolean hasFinAcct =hasFinAcct(identityName);
+	return hasFinAcct;
+	]]></Source>
+    </Script>
+  </Variable>
+  <Variable editable="true" name="defaultPassword">
+    <Description>defaultPassword stores the onetime default password for
+			all the systems like AD/HDAP</Description>
+    <Script>
+      <Source><![CDATA[
+    import sailpoint.object.Identity;
+        
+        
+        Identity ident = context.getObjectByName(Identity.class,identityName);
+		    String defaultPassword=getPasswordFor_S_Account();
+        ident.setPassword(defaultPassword);
+        return defaultPassword;
+			]]></Source>
+    </Script>
+  </Variable>
+  <Variable input="true" name="approvalSet">
+    <Description>This attributes is set during the "Build Approval Set"
+			step,
+			which builds this list by going through the ProvisioningPlan
+			to build the line items that need to be approved,</Description>
+  </Variable>
+  <Variable editable="true" name="result"/>
+  <Description>This workflow is for provisioning birthright access to the
+		Joiners in the organization. Various accesses are AD,HDAP and PS
+		Financials. Based on several business logics, accesses are provided to
+		the joiner in the organization.</Description>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-AuditRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-ProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-AuditRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-ProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-SpAcctProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="cobUtils"/>
+    <Reference class="sailpoint.object.Rule" name="Approval Library"/>
+    <Reference class="sailpoint.object.Rule" name="LCM Workflow Library"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start">
+    <Transition to="Step0"/>
+  </Step>
+  <Step icon="Default" name="Step0" posX="17" posY="104" resultVariable="workflowLogPrefix">
+    <Script>
+      <Source><![CDATA[
+      	String workflowLogPrefix = workflow.getName() + "::" + identityName + "::"; 
+		return workflowLogPrefix;
+	  ]]></Source>
+    </Script>
+    <Transition to="IsActiveAccount" when="isCHEmployee"/>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Default" name="IsActiveAccount" posX="17" posY="104" resultVariable="isActiveAccount">
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflow.getName() + "::" + identityName + "::" + wfcontext.getStep().getName() + "::";
+		boolean isActiveAccount = false;
+		String cobEmployeeStatusCode = null;
+		Link psLink = (Link) psLinks.iterator().next();
+		if (psLink != null) {
+			if (psLink.getAttributes() != null) {
+				cobEmployeeStatusCode = psLink.getAttribute("EMPL_STATUS");
+				isActiveAccount = isCollectionContainsStringIC(getActiveStatusList(), cobEmployeeStatusCode);
+			}
+		}
+		log.debug(logPrefix+" "+"EndStep::isActiveAccount=" + isActiveAccount + "::cobEmployeeStatusCode=" + cobEmployeeStatusCode);
+		return isActiveAccount;
+	  ]]></Source>
+    </Script>
+    <Transition to="UpdateEmail" when="isActiveAccount"/>
+    <Transition to="Stop"/>
+  </Step>
+  <Step name="UpdateEmail">
+    <Arg name="event" value="ref:event"/>
+    <Script>
+      <Source><![CDATA[
+	/** START **/
+		// Get new Identity, first name, last name, and email address
+		String finalEmail = "";
+		Identity newIdentity = (Identity) event.getNewObject();
+		String newFirstName = newIdentity.getFirstname();
+		String newLastName = newIdentity.getLastname();
+		
+		// Get old Identity, first name, last name, and email address
+		Identity oldIdentity = (Identity) event.getOldObject();
+		String oldFirstName = oldIdentity.getFirstname();
+		String oldLastName = oldIdentity.getLastname();
+		
+		// check if the values are different
+		// different generate unique email address
+		// set variables in wfcontext
+
+		if (!newFirstName.equalsIgnoreCase(oldFirstName) || !newLastName.equalsIgnoreCase(oldLastName)) {
+			if (isBPSEmployee) {
+				finalEmail = generateUniqueEmailAddress("Dev_BPS_AD", newFirstName, newLastName, context);
+			    //Update the cube with the newly generated email address
+			    newIdentity.setEmail(finalEmail);
+				wfcontext.setVariable("email", finalEmail);
+				
+			} else {
+				finalEmail = generateUniqueEmailAddress("Dev_CityHall_AD", newFirstName, newLastName, context);
+				//Update the cube with the newly generated email address
+				newIdentity.setEmail(finalEmail);
+				wfcontext.setVariable("email", finalEmail);
+				
+
+			}
+			    context.saveObject(newIdentity);
+			    context.commitTransaction();	
+				
+			
+		}
+		
+	
+		
+		/** END **/
+	]]></Source>
+    </Script>
+    <Transition to="Get Changed Attributes Map" when="isActiveAccount"/>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Default" name="Get Changed Attributes Map" posX="98" posY="10" resultVariable="changedAttrMap">
+    <Arg name="event" value="ref:event"/>
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflow.getName() + "::" + identityName + "::" + wfcontext.getStep().getName() + "::";
+		log.debug(logPrefix);
+		
+		Map changedAttrMap = new HashMap();
+		Identity newIdentity = (Identity) event.getNewObject();
+		Identity oldIdentity = (Identity) event.getOldObject();
+		if(newIdentity != null && oldIdentity != null){
+			changedAttrMap =getChangedAttributes(newIdentity,oldIdentity);
+			}
+		return changedAttrMap;
+	  ]]></Source>
+    </Script>
+    <Transition to="Stop" when="script:Util.isEmpty(psLinks)"/>
+    <Transition to="AD_Provision" when="hasNoAD"/>
+    <Transition to="AD_Update" when="script: return wfcontext.getRootWorkflowCase().getMessages()==null;"/>
+  </Step>
+  <Step icon="Message" name="AD_Provision" posX="653" posY="376">
+    <Arg name="email" value="ref:email"/>
+    <Arg name="changedAttrMap" value="ref:changedAttrMap"/>
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="project"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="source" value="ref:source"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="LCMEvent" value="ref:LCMEvent"/>
+    <Arg name="defaultPassword" value="ref:defaultPassword"/>
+    <Arg name="isBPSEmployee" value="ref:isBPSEmployee"/>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="COB-Workflow-AD-Create-Employee"/>
+    </WorkflowRef>
+    <Transition to="RefreshIdentityAfterAD" when="script: return wfcontext.getRootWorkflowCase().getMessages()==null;"/>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Message" name="AD_Update" posX="653" posY="376">
+    <Arg name="changedAttrMap" value="ref:changedAttrMap"/>
+    <Arg name="email" value="ref:email"/>
+    <Arg name="event" value="ref:event"/>
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="project"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="source" value="ref:source"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="LCMEvent" value="ref:LCMEvent"/>
+    <Arg name="psLinks" value="ref:psLinks"/>
+    <Arg name="isBPSEmployee" value="ref:isBPSEmployee"/>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="COB-Workflow-AD-Update-Employee"/>
+    </WorkflowRef>
+    <Transition to="RefreshIdentityAfterAD" when="script: return wfcontext.getRootWorkflowCase().getMessages()==null;"/>
+    <Transition to="Stop"/>
+  </Step>
+  <Step action="call:refreshIdentity" icon="Task" name="RefreshIdentityAfterAD" posX="539" posY="378" wait="2">
+    <Arg name="refreshLinks" value="true"/>
+    <Arg name="forceLinkAttributePromotion" value="true"/>
+    <Arg name="synchronizeAttributes" value="true"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="promoteAttributes" value="true"/>
+    <Description>
+			Only synchronize attributes for this one specific Identity and refresh
+			Links.
+			TODO add when="script: return
+			wfcontext.getRootWorkflowCase().getMessages()==null;"
+		</Description>
+    <Transition to="HDAP_Provision" when="hasNoHDAP"/>
+    <Transition to="HDAP_Update"/>
+  </Step>
+  <Step icon="Default" name="HDAP_Provision" posX="432" posY="379" resultVariable="plan">
+    <Arg name="changedAttrMap" value="ref:changedAttrMap"/>
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="project" value="ref:project"/>
+    <Arg name="source" value="ref:source"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="email" value="ref:email"/>
+    <Arg name="defaultPassword" value="ref:defaultPassword"/>
+    <Arg name="isBPSEmployee" value="ref:isBPSEmployee"/>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="COB-Workflow-HDAP-Create-Employee"/>
+    </WorkflowRef>
+    <Transition to="Refresh_Identity_After_HDAP" when="script: return wfcontext.getRootWorkflowCase().getMessages()==null;"/>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Default" name="HDAP_Update" posX="432" posY="379" resultVariable="plan">
+    <Arg name="changedAttrMap" value="ref:changedAttrMap"/>
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="project" value="ref:project"/>
+    <Arg name="source" value="ref:source"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="email" value="ref:email"/>
+    <Arg name="isBPSEmployee" value="ref:isBPSEmployee"/>
+    <Arg name="psLinks" value="ref:psLinks"/>
+    <Arg name="isBPSEmployee" value="ref:isBPSEmployee"/>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="COB-Workflow-HDAP-Update-Employee"/>
+    </WorkflowRef>
+    <Transition to="Refresh_Identity_After_HDAP" when="script: return wfcontext.getRootWorkflowCase().getMessages()==null;"/>
+    <Transition to="Stop"/>
+  </Step>
+  <Step action="call:refreshIdentity" icon="Task" name="Refresh_Identity_After_HDAP" posX="432" posY="455" wait="2">
+    <Arg name="refreshLinks" value="true"/>
+    <Arg name="forceLinkAttributePromotion" value="true"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="promoteAttributes" value="true"/>
+    <Description>
+			Add arguments as necessary to enable refresh features. Typically you
+			only want this to correlate roles. Don't ask for provisioning since
+			that can result in provisioning policies that need to be presented and it's
+			too late for that. This is only to get role detection and exception
+			entitlements in the cube.
+			TODO add when="script: return
+			wfcontext.getRootWorkflowCase().getMessages()==null;"
+		</Description>
+    <Transition to="Update_FIN" when="hasFINAcct"/>
+    <Transition to="Stop"/>
+  </Step>
+  <Step name="Update_FIN">
+    <Arg name="changedAttrMap" value="ref:changedAttrMap"/>
+    <Arg name="email" value="ref:email"/>
+  </Step>
+  <Step icon="Stop" name="Stop" posX="1101" posY="221"/>
+  <Step catches="complete" icon="Catches" name="HandleException" posX="37" posY="690">
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		try {
+	            cobLog(logPrefix, "EnterStep");
+				if(!wfcontext.getWorkflowCase().getErrors().isEmpty()){
+				sendErrorEmailFromWorkflow(wfcontext);
+				}
+				cobLog(logPrefix, "ExitStep");
+			}
+		 catch (Throwable e) {
+			cobLog(logPrefix, "Exception:");
+			e.printStackTrace();
+		}
+	  ]]></Source>
+    </Script>
+  </Step>
+</Workflow>

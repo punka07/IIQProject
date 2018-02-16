@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE DynamicScope PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<DynamicScope name="COB-DynamicScope-TerminateIdentity">
+  <Description/>
+  <PopulationRequestAuthority>
+    <MatchConfig enableSubordinateControl="true" maxHierarchyDepth="10" subordinateOption="directOrIndirect"/>
+  </PopulationRequestAuthority>
+  <Selector>
+    <IdentitySelector>
+      <MatchExpression>
+        <MatchTerm name="managerStatus" value="true"/>
+      </MatchExpression>
+    </IdentitySelector>
+  </Selector>
+</DynamicScope>

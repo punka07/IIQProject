@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-Generate-Unique-Email">
+  <Source><![CDATA[
+        
+    
+public static boolean isMailUnique(String mail, SailPointContext context) throws GeneralException, NamingException {
+		boolean isMailUnique = true;
+		if (mail != null) {
+			if (isMailInAD(mail, context)) {
+				isMailUnique = false;
+			} else if (isMailInIIQ(mail, context)) {
+				isMailUnique = false;
+			}
+		}
+		//
+		return isMailUnique;
+	}
+  
+  private static boolean isMailInAD(String mail, SailPointContext context) throws GeneralException, NamingException {
+		String searchFilter = "(" + ADAttribute.MAIL + "=" + mail + ")";
+		return isInAD(searchFilter, context);
+	}
+  
+  private static boolean isInAD(String searchFilter, SailPointContext context) throws GeneralException, NamingException {
+		boolean isSAMAccountNameInAD = false;
+		Map adEnvironments = getActiveDirectoryEnvironments("Active_Directory", context);
+		for (Entry adEnv : adEnvironments.entrySet()) {
+			Collection results = cobRetrieveAccountsFromADEnvironment(searchFilter, new String[] { ADAttribute.SAMACCOUNTNAME }, adEnv);
+			isSAMAccountNameInAD = results.size() > 0;
+			if (isSAMAccountNameInAD) {
+				break;
+			}
+		}
+		return isSAMAccountNameInAD;
+	}
+  
+  /**
+	 * Utility method to get AD environments from Sailpoint context.
+	 *
+	 * @param adApplicationName
+	 *            - Active Directory application name
+	 * @param context
+	 *            - current SailPointContext
+	 * @return baseDN to AD environment Map
+	 * @throws GeneralException
+	 *             if application not found by applicationName
+	 *
+	 * @author  Pankaj BC- November 2017
+	 */
+	public static Map getActiveDirectoryEnvironments(String adApplicationName, SailPointContext context)
+			throws GeneralException {
+		Map dnToDomainEnvironmentMap = new HashMap();
+		Application appAD = context.getObjectByName(Application.class, adApplicationName);
+		if (appAD != null) {
+			sailpoint.object.Attributes adAppAttrs = appAD.getAttributes();
+			if (adAppAttrs != null) {
+				//@SuppressWarnings("unchecked")
+				List configs = adAppAttrs.getList("domainSettings");
+				for (Map config : configs) {
+					String bindDN = (String) config.get("user");
+					String pword = (String) config.get("password");
+					String domainDN = (String) config.get("domainDN");
+					//@SuppressWarnings("unchecked")
+					List servers = (List) config.get("servers");
+					String host = servers.iterator().next();
+					
+					String port = (String) config.get("port");
+					if (domainDN.toLowerCase().startsWith("dc=cob,dc=")) {
+						port = "3268";
+					}
+					Hashtable ldapEnv = new Hashtable();
+					ldapEnv.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+					ldapEnv.put(Context.PROVIDER_URL, "ldap://" + host + ":" + port);
+					ldapEnv.put(Context.REFERRAL, "follow");
+					ldapEnv.put(Context.SECURITY_AUTHENTICATION, "simple");
+					ldapEnv.put(Context.SECURITY_PRINCIPAL, bindDN);
+					ldapEnv.put(Context.SECURITY_CREDENTIALS, context.decrypt(pword));
+
+					dnToDomainEnvironmentMap.put(domainDN, ldapEnv);
+				}
+			}
+		}
+		return dnToDomainEnvironmentMap;
+	}
+
+  public static Collection cobRetrieveAccountsFromADEnvironment(String searchFilter, String[] attributesToReturn, String baseDN,
+			Hashtable env) throws GeneralException, NamingException {
+		Collection searchResults = new ArrayList();
+		DirContext adCtx = null;
+		NamingEnumeration response = null;
+		try {
+			
+			adCtx = new InitialDirContext(env);
+			SearchControls searchCtls = new SearchControls();
+			searchCtls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+			searchCtls.setReturningAttributes(attributesToReturn);
+			searchCtls.setReturningObjFlag(false);
+			response = adCtx.search(baseDN, searchFilter, searchCtls);
+			while (response.hasMore()) {
+				searchResults.add(response.next());
+			}
+		} catch (Throwable t) {
+			t.printStackTrace();
+			throw t;
+		} finally {
+			if (response != null) {
+				try {
+					response.close();
+				} catch (NamingException ignore) {//NOPMD - suppress PMD warning (ignore Exception on context close)
+				}
+			}
+			if (adCtx != null) {
+				try {
+					adCtx.close();
+				} catch (NamingException ignore) {//NOPMD - suppress PMD warning (ignore Exception on context close)
+				}
+			}
+		}
+
+		return searchResults;
+	}
+  ]]></Source>
+</Rule>

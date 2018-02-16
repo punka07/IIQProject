@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE EmailTemplate PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<EmailTemplate name="COB-EmailTemplate-RequestAccess-Approval">
+  <Body>
+&lt;html&gt;
+&lt;body&gt;
+
+
+
+
+
+
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;Hello, &lt;/span&gt;
+&lt;span style="font-size:12.0pt;font-family:
+" times="" new="" roman","serif";mso-fareast-font-family:"times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";="" mso-fareast-font-family:"times="" roman""=""&gt;&amp;nbsp;&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;$identityDisplayName has
+submitted a new access request. &lt;/span&gt;
+&lt;span style="font-size:12.0pt;
+font-family:" times="" new="" roman","serif";mso-fareast-font-family:"times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";="" mso-fareast-font-family:"times="" roman""=""&gt;&amp;nbsp;&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;Please review the details for this request and
+approve/reject this request via the AccessBoston &lt;a href="http://devcobiiq:8086/identityiq/dashboard.jsf"&gt;portal&lt;/a&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";="" mso-fareast-font-family:"times="" roman""=""&gt;&amp;nbsp;&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;Request details : &lt;/span&gt;
+&lt;span style="font-size:12.0pt;
+font-family:" times="" new="" roman","serif";mso-fareast-font-family:"times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";="" mso-fareast-font-family:"times="" roman""=""&gt;&amp;nbsp;&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family: Arial, sans-serif;"&gt;#if ( $approvalSet.items )&lt;/span&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:"times="" new="" roman";="" color:black"=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family: Arial, sans-serif;"&gt;#foreach ($approvalItem in $approvalSet.items)&lt;/span&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:"times="" new="" roman";="" color:black"=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family: Arial, sans-serif;"&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; Application:
+$approvalItem.applicationName&lt;/span&gt;
+&lt;span style="font-family:" arial","sans-serif";="" mso-fareast-font-family:"times="" new="" roman";color:black"=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family: Arial, sans-serif;"&gt;#if ( $approvalItem.nativeIdentity )&amp;nbsp;
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;/span&gt;
+&lt;span style="font-family:" arial","sans-serif";="" mso-fareast-font-family:"times="" new="" roman";color:black"=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family: Arial, sans-serif;"&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;
+&amp;nbsp;Account : $approvalItem.nativeIdentity&lt;/span&gt;
+&lt;span style="font-family:
+" arial","sans-serif";mso-fareast-font-family:"times="" new="" roman";color:black"=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family: Arial, sans-serif;"&gt;#end&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;/span&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:"times="" new="" roman";="" color:black"=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family: Arial, sans-serif;"&gt;#end&lt;/span&gt;
+&lt;/p&gt;
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+
+&lt;/p&gt;
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family: Arial, sans-serif;"&gt;#end&lt;/span&gt;
+&lt;span style="font-family:" arial","sans-serif";="" mso-fareast-font-family:"times="" new="" roman";color:black"=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 12pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";mso-fareast-font-family:="" "times="" roman""=""&gt;&amp;nbsp;&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;Please complete this action at your earliest convenience.&lt;/span&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";mso-fareast-font-family:="" "times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";="" mso-fareast-font-family:"times="" roman""=""&gt;&amp;nbsp;&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;Sincerely, AccessBoston&lt;/span&gt;
+&lt;span style="font-size:12.0pt;
+font-family:" times="" new="" roman","serif";mso-fareast-font-family:"times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";="" mso-fareast-font-family:"times="" roman""=""&gt;&amp;nbsp;&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;Questions about the access request process should be
+directed to the DoIT Service Desk via 617-635-7378 or &lt;span style="background-image: initial; background-position: initial; background-size: initial; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;"&gt;BPS Technology Help Desk Support &amp;nbsp;at 617-635-9200.&lt;/span&gt; &lt;/span&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";mso-fareast-font-family:="" "times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="color: rgb(51, 51, 51); font-family: " open="" sans",="" "helvetica="" neue",="" helvetica,="" arial,="" sans-serif;="" font-size:="" 12px;="" margin-bottom:="" 0.0001pt;="" line-height:="" normal;"=""&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;Please Note: this is an auto-generated email, please do not
+reply to this email. &lt;/span&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";="" mso-fareast-font-family:"times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="margin-bottom: 0.0001pt; line-height: normal;"&gt;
+&lt;img src="http://devcobiiq:8080/identityiq/ui/images/TopLogo1.png"&gt;
+&lt;/p&gt;
+&lt;p class="MsoNormal" style="margin-bottom: 0.0001pt; line-height: normal;"&gt;
+&lt;span style="font-size: 8pt;"&gt;The
+information contained in this communication, including any attachments, is
+intended solely for the use of the individual or entity to whom it is addressed
+and others authorized to receive it. It may contain confidential or legally
+privileged information. If you are not the intended recipient you are hereby
+notified that any disclosure, copying, distribution or taking any action in
+reliance on the contents of this information is strictly prohibited and may be
+unlawful. If you have received this communication in error, please notify us
+immediately by responding to this email and then delete it from your system.
+The sender is neither liable for the proper and complete transmission of the
+information contained in this communication nor for any delay in its receipt.&lt;/span&gt;
+&lt;/p&gt;
+
+
+
+
+
+
+
+
+
+
+
+
+&lt;/body&gt;
+&lt;/html&gt;
+</Body>
+  <Description>Email Template for notifying approvers when they need to approve a request made through LCM.
+      Note that in addition to the declared arguments, all workflow variables,
+      Step arguments, and Approval arguments defined in the Workflow are
+      also available.</Description>
+  <Signature>
+    <Inputs>
+      <Argument name="workflow" type="Workflow">
+        <Description>The Workflow object being executed.</Description>
+      </Argument>
+      <Argument name="item" type="WorkItem">
+        <Description>The WorkItem representing the review.</Description>
+      </Argument>
+      <Argument name="approvalSet" type="ApprovalSet">
+        <Description>The ApprovalSet object contained in the work item.</Description>
+      </Argument>
+      <Argument name="launcher" type="string">
+        <Description>The name of the Identity that launched the workflow.</Description>
+      </Argument>
+      <Argument name="identityName" type="string">
+        <Description>The name of the Identity that is being changed.</Description>
+      </Argument>
+      <Argument name="identityDisplayName" type="string">
+        <Description>The display name of the Identity that is being changed.</Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Subject>Subject: ACTION REQUIRED: New Access Requested</Subject>
+</EmailTemplate>

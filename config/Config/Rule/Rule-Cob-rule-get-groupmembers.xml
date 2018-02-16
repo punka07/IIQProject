@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-Get-GroupMembers">
+  <Source><![CDATA[
+  import sailpoint.api.*;
+  import sailpoint.object.*;
+  import sailpoint.tools.*;
+  
+  
+   public static List getGroupMembers(String groupDN, String appName){
+     int i=groupDN.indexOf(',');
+     String displayName=groupDN.substring(3,i);
+     Application appObj=context.getObjectByName(Application.class,appName);
+     ManagedAttribute ma = ManagedAttributer.getByDisplayName(context,appObj,displayName);
+     return ma.getAttributes().getList("uniquemember");
+   }
+  return getGroupMembers("cn=TestGrp-01,cn=Groups,dc=boston,dc=cob","Dev_ROFID");
+  
+  ]]></Source>
+</Rule>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-DeletionRefresh" type="Refresh">
+  <Description>
+    Example rule to modify the given user that has been aggregated or refreshed.
+  </Description>
+  <Signature>
+    <Inputs>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to
+          access the database.
+        </Description>
+      </Argument>
+      <Argument name="environment" type="java.util.Map">
+        <Description>
+          The task agruments passed to the aggregation or refresh task.
+        </Description>
+      </Argument>
+      <Argument name="identity" type="Identity">
+        <Description>
+          The identity that is being updated.
+        </Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Source><![CDATA[
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+  
+ /*******
+ *                                                                                 *
+ * Generated: Wed Jan 17 14:30:08 EST 2018                                         *
+ * Rule: Identity Refresh Template                                                 *
+ * Description: Identity Refresh Template                                          *
+ * Inputs:                                                                         *
+ *     environment - The task arguments passed to the aggregation or refresh task. *
+ *     identity - The identity that is being updated.                              *
+ * Returns:                                                                        *
+ ******/
+  
+  //We are going to first check the termination date set for the identity 
+  //If the date is available, change the string to date and check if that was 30   
+  //days ago
+  
+ //Let's check the date since termination
+        String identityName=identity.getName();
+        String termDateStr= identity.getStringAttribute("cobTermDate");
+  if(termDateStr != null){
+        Date today = new Date();
+        Date termDate= new java.text.SimpleDateFormat("yyyy-MM-dd").parse(termDateStr);
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.setTime(termDate);
+        cal.add(java.util.Calendar.MONTH, 1);
+        Date nextMonth = cal.getTime();
+        if(today.after(nextMonth)){
+           //if this is the case, go ahead and launch deletion workflow
+            Map launchArgsMap = new HashMap();
+            launchArgsMap.put("identityName", identityName);
+           
+/*****
+ *Next we are creating WorkflowLaunch *
+ *and setting values                  *
+ ****/
+            WorkflowLaunch wflaunch = new WorkflowLaunch();
+            Workflow wf = null;
+            try {
+                wf = (Workflow) context.getObjectByName(Workflow.class, "COB-Workflow-Deletion");
+            } catch (GeneralException e) {
+                e.printStackTrace();
+            }
+            wflaunch.setWorkflowName(wf.getName());
+            wflaunch.setWorkflowRef(wf.getName());
+            wflaunch.setCaseName("COB-Workflow-Deletion");
+            wflaunch.setVariables(launchArgsMap);
+/*****
+ *Next we are creating Workflower             *
+ *and launching workflow from WorkflowLaunch  *
+ *****/                                       
+            Workflower workflower = new Workflower(context);
+
+
+            WorkflowLaunch launch = null;
+            try {
+                launch = workflower.launch(wflaunch);
+            } catch (GeneralException e) {
+                e.printStackTrace();
+            }
+      
+          
+        }
+  }
+    
+  ]]></Source>
+</Rule>

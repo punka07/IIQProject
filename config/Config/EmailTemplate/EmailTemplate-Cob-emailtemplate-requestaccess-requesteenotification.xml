@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE EmailTemplate PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<EmailTemplate name="COB-EmailTemplate-RequestAccess-RequesteeNotification">
+  <Body>
+&lt;html&gt;
+&lt;body&gt;
+
+
+Hello $launcherDisplayName,&amp;nbsp;&lt;br&gt;
+&lt;br&gt;#if ( $approvalSet )&lt;br&gt;
+&lt;br&gt;&amp;nbsp;#if ( $approvalSet.hasApproved() )&amp;nbsp;&amp;nbsp;&lt;br&gt;
+&lt;br&gt;This email is to notify you that your request for additional access for your AccessBoston account has been approved.&amp;nbsp;&lt;br&gt;
+&lt;br&gt;#foreach ($item in $approvalSet.approved)&amp;nbsp;&lt;br&gt;
+&lt;br&gt;Application: $item.applicationName&amp;nbsp;&lt;br&gt;
+&lt;br&gt;Please confirm the icon for this application appears for you on the AccessBoston portal and you can access it.&amp;nbsp;&lt;br&gt;
+&lt;br&gt;#end&amp;nbsp;&lt;br&gt;
+&lt;br&gt;#end&amp;nbsp;&lt;br&gt;
+&lt;br&gt;
+#end&lt;br&gt;
+&lt;br&gt;#if ( $approvalSet.hasRejected() )&amp;nbsp;&lt;br&gt;
+&lt;br&gt;This email is to notify you that your request for additional access for your AccessBoston account has been rejected.&amp;nbsp;&lt;br&gt;
+&lt;br&gt;#foreach ($item in $approvalSet.rejected)&amp;nbsp;&lt;br&gt;
+&lt;br&gt;Application: $item.applicationName&amp;nbsp;&lt;br&gt;
+&lt;br&gt;Please confer with your manager if you believe this rejection was in error.&amp;nbsp;&lt;br&gt;
+&lt;br&gt;#end&lt;br&gt;
+&lt;br&gt;#end&lt;br&gt;
+&lt;p class="MsoNormal" style="margin-bottom:0in;margin-bottom:.0001pt;line-height:
+normal"&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;Sincerely, AccessBoston&lt;/span&gt;
+&lt;span style="font-size:12.0pt;
+font-family:" times="" new="" roman","serif";mso-fareast-font-family:"times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="margin-bottom:0in;margin-bottom:.0001pt;line-height:
+normal"&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";="" mso-fareast-font-family:"times="" roman""=""&gt;&amp;nbsp;&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="margin-bottom:0in;margin-bottom:.0001pt;line-height:
+normal"&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;Questions about the access request process should be
+directed to the DoIT Service Desk via 617-635-7378 or &lt;span style="background-image: initial; background-position: initial; background-size: initial; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;"&gt;BPS Technology Help Desk Support &amp;nbsp;at 617-635-9200.&lt;/span&gt; &lt;/span&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";mso-fareast-font-family:="" "times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="margin-bottom:0in;margin-bottom:.0001pt;line-height:
+normal"&gt;
+&lt;span style="font-family:" arial","sans-serif";mso-fareast-font-family:="" "times="" new="" roman""=""&gt;Please Note: this is an auto-generated email, please do not
+reply to this email. &lt;/span&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";="" mso-fareast-font-family:"times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="margin-bottom:0in;margin-bottom:.0001pt;line-height:
+normal"&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";="" mso-fareast-font-family:"times="" roman""=""&gt;&amp;nbsp;&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p class="MsoNormal" style="margin-bottom:0in;margin-bottom:.0001pt;line-height:
+normal"&gt;
+&lt;span style="font-size:8.0pt;mso-ascii-font-family:Calibri;mso-fareast-font-family:
+" times="" new="" roman";mso-hansi-font-family:calibri;mso-bidi-font-family:"times="" roman""=""&gt;The
+information contained in this communication, including any attachments, is
+intended solely for the use of the individual or entity to whom it is addressed
+and others authorized to receive it. It may contain confidential or legally
+privileged information. If you are not the intended recipient you are hereby
+notified that any disclosure, copying, distribution or taking any action in
+reliance on the contents of this information is strictly prohibited and may be
+unlawful. If you have received this communication in error, please notify us
+immediately by responding to this email and then delete it from your system.
+The sender is neither liable for the proper and complete transmission of the
+information contained in this communication nor for any delay in its receipt.&lt;/span&gt;
+&lt;span style="font-size:12.0pt;font-family:" times="" new="" roman","serif";mso-fareast-font-family:="" "times="" roman""=""&gt;
+&lt;o:p&gt;
+&lt;/o:p&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+
+
+&lt;/body&gt;
+&lt;/html&gt;
+</Body>
+  <Description>Email Template for notifying users when accounts have been changed through Life Cycle Manager.
+      Note that in addition to the declared arguments, all workflow variables,
+      Step arguments, and Approval arguments defined in the Workflow are
+      also available.</Description>
+  <Signature>
+    <Inputs>
+      <Argument name="workflow" type="Workflow">
+        <Description>The Workflow object being executed.</Description>
+      </Argument>
+      <Argument name="approvalSet" type="ApprovalSet">
+        <Description>The ApprovalSet object contained in the workflow.</Description>
+      </Argument>
+      <Argument name="launcher" type="string">
+        <Description>The name of the Identity that launched the workflow.</Description>
+      </Argument>
+      <Argument name="identityDisplayName" type="string">
+        <Description>The display name of the Identity that is being changed.</Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Subject>Changes to your Identity were processed</Subject>
+</EmailTemplate>

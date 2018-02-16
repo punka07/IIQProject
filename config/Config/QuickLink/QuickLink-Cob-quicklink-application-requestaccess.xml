@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE QuickLink PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<QuickLink action="workflow" category="Manage" cssClass="quicklink-application-access-request" messageKey="Request Application Access" name="COB-QuickLink-Application-RequestAccess" ordering="3">
+  <Attributes>
+    <Map>
+      <entry key="workflowName" value="COB-Workflow-Application-AccessRequest"/>
+      <entry key="workflowSuccess" value="Starting Application Access Request Process..."/>
+    </Map>
+  </Attributes>
+  <QuickLinkOptions allowSelf="true">
+    <DynamicScopeRef>
+      <Reference class="sailpoint.object.DynamicScope" name="Self Service"/>
+    </DynamicScopeRef>
+  </QuickLinkOptions>
+  <QuickLinkOptions allowSelf="true">
+    <DynamicScopeRef>
+      <Reference class="sailpoint.object.DynamicScope" name="Everyone"/>
+    </DynamicScopeRef>
+  </QuickLinkOptions>
+</QuickLink>

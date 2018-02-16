@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="COB-Custom-Department-Mapping">
+  <Attributes>
+    <Map>
+      <entry key="Dept-Id-Name">
+        <value>
+          <List>
+            <String>Administration &amp; Finance-144000</String>
+            <String>Arts &amp; Culture-414000</String>
+            <String>Assessing-136000</String>
+            <String>Auditing-131000</String>
+            <String>BCYF-385000</String>
+            <String>Budget-141000</String>
+            <String>City Clerk-161000</String>
+            <String>City Council-112000</String>
+            <String>Collections-137000</String>
+            <String>Consumer Affairs &amp; Licensing-114000</String>
+            <String>Disabilities Commission-404000</String>
+            <String>DoIT-149000</String>
+            <String>Economic Development-182000</String>
+            <String>Elderly Commission-387000</String>
+            <String>Elections-121000</String>
+            <String>Emergency Management-231000</String>
+            <String>Environment-303000</String>
+            <String>Fair Housing and Equity-403000</String>
+            <String>Health Benefits-148000</String>
+            <String>Human Resources-142000</String>
+            <String>Immigrant Advancement-113000</String>
+            <String>Inspectional Services-260000</String>
+            <String>Intergovernmental Relations-150000</String>
+            <String>Law-151000</String>
+            <String>Mayor's Office-111000</String>
+            <String>Neighborhood Development-188000</String>
+            <String>Neighborhood Services-412000</String>
+            <String>Office of Labor Relations-147000</String>
+            <String>Office of Streets-310000</String>
+            <String>Parking Clerk-253000</String>
+            <String>Parks-300000</String>
+            <String>Press Office-411000</String>
+            <String>Procurement-143000</String>
+            <String>Property Management-180000</String>
+            <String>Public Facilities-181000</String>
+            <String>Public Works-311000</String>
+            <String>Registry-163000</String>
+            <String>Retirement-782000</String>
+            <String>Small Business Development-156000</String>
+            <String>Tourism, Sports and Entertainment-415000</String>
+            <String>Transportation-251000</String>
+            <String>Treasury-138000</String>
+            <String>Veterans' Services-741000</String>
+            <String>Women's Advancement-417000</String>
+            <String>Worker's Compensation-155000</String>
+          </List>
+        </value>
+      </entry>
+      <entry key="Id-Name-Mapping">
+        <value>
+          <Map>
+            <entry key="111000" value="Mayor's Office"/>
+            <entry key="112000" value="City Council"/>
+            <entry key="113000" value="Immigrant Advancement"/>
+            <entry key="114000" value="Consumer Affairs &amp; Licensing"/>
+            <entry key="121000" value="Elections"/>
+            <entry key="131000" value="Auditing"/>
+            <entry key="136000" value="Assessing"/>
+            <entry key="137000" value="Collections"/>
+            <entry key="138000" value="Treasury"/>
+            <entry key="141000" value="Budget"/>
+            <entry key="142000" value="Human Resources"/>
+            <entry key="143000" value="Procurement"/>
+            <entry key="144000" value="Administration &amp; Finance"/>
+            <entry key="147000" value="Office of Labor Relations"/>
+            <entry key="148000" value="Health Benefits"/>
+            <entry key="149000" value="DoIT"/>
+            <entry key="150000" value="Intergovernmental Relations"/>
+            <entry key="151000" value="Law"/>
+            <entry key="155000" value="Worker's Compensation"/>
+            <entry key="156000" value="Small Business Development"/>
+            <entry key="161000" value="City Clerk"/>
+            <entry key="163000" value="Registry"/>
+            <entry key="180000" value="Property Management"/>
+            <entry key="181000" value="Public Facilities"/>
+            <entry key="182000" value="Economic Development"/>
+            <entry key="188000" value="Neighborhood Development"/>
+            <entry key="231000" value="Emergency Management"/>
+            <entry key="251000" value="Transportation"/>
+            <entry key="253000" value="Parking Clerk"/>
+            <entry key="260000" value="Inspectional Services"/>
+            <entry key="300000" value="Parks"/>
+            <entry key="303000" value="Environment"/>
+            <entry key="310000" value="Office of Streets"/>
+            <entry key="311000" value="Public Works"/>
+            <entry key="385000" value="BCYF"/>
+            <entry key="387000" value="Elderly Commission"/>
+            <entry key="403000" value="Fair Housing and Equity"/>
+            <entry key="404000" value="Disabilities Commission"/>
+            <entry key="411000" value="Press Office "/>
+            <entry key="412000" value="Neighborhood Services"/>
+            <entry key="414000" value="Arts &amp; Culture"/>
+            <entry key="415000" value="Tourism, Sports and Entertainment"/>
+            <entry key="417000" value="Women's Advancement"/>
+            <entry key="741000" value="Veterans' Services"/>
+            <entry key="782000" value="Retirement"/>
+          </Map>
+        </value>
+      </entry>
+    </Map>
+  </Attributes>
+</Custom>

@@ -1,0 +1,724 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" libraries="Identity,LCM,IdentityRequest" name="COB-Workflow-PSFIN-AccessRequest">
+  <Variable initializer="AccessRequest" input="true" name="flow"/>
+  <Variable initializer="true" name="transient">
+    <Description>Set to false to cause workflow-related objects, such as
+			approval
+			work items, to be saved in the database even if they are only
+			viewed by the person registering.</Description>
+  </Variable>
+  <Variable initializer="identityModel" name="basePath">
+    <Description>The form path to the link we are interested in editing.</Description>
+  </Variable>
+  <Variable editable="true" name="optimisticProvisioning">
+    <Description>Set to true to enable optimistic provisioning.  This will cause
+      changes to the entitlements compiled from role assignments to be 
+      applied immediately to the identity cube rather than waiting
+      for the next refresh/reaggregation after the provisioning system
+      completes the request.</Description>
+  </Variable>
+  <Variable editable="true" initializer="true" name="foregroundProvisioning">
+    <Description>Normally provisioning is done in a step that uses the &amp;quot;background&amp;quot;
+      option to force the workflow to be suspend and be resumed in a
+      background task thread.  This prevents the browser session from
+      hanging since provision can sometimes take a long time.  For demos
+      and testing it can be better to do this in the foreground so that
+      provisioning will have been performed when control is returned to the
+      user.  This prevents having to run the Perform Maintenance task to
+      see the results of the request.</Description>
+  </Variable>
+  <Variable name="launcher"/>
+  <Variable name="identityModel"/>
+  <Variable initializer="ref:launcher" name="identityName"/>
+  <Variable name="identity">
+    <Script>
+      <Source><![CDATA[
+	import sailpoint.object.Identity;
+	
+	Identity identity =context.getObjectByName(Identity.class,identityName);
+	if(identity != null){
+		return identity;
+	}
+	]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="identityRequestId"/>
+  <Variable name="identityRequest"/>
+  <Variable initializer="string:true" name="trace"/>
+  <Variable name="approvalSet" output="true">
+    <Description>This attribute is set during the "BuildApprovalSet" step,
+			which builds this list by going through the ProvisioningPlan
+			to build the line items that need to be approved.
+
+			This variable includes all ApprovalItems that are part of
+			the request process and is updated during the AfterScript
+			of the approval process by assimilating the decisions
+			and comments from the Approvals copy of the ApprovalItem.</Description>
+  </Variable>
+  <Variable name="launcherManager">
+    <Script>
+      <Source><![CDATA[
+      import sailpoint.object.Identity;
+
+		
+		Identity ident = context.getObject(Identity.class, launcher);
+      
+ 
+		if (ident != null) {
+			Identity manager =ident.getManager();
+      if(manager != null){
+      return manager.getName();
+      
+			}
+			
+			}
+      ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="launcherManagerDisplayName">
+    <Script>
+      <Source><![CDATA[
+      import sailpoint.object.Identity;
+
+		
+		Identity ident = context.getObject(Identity.class, launcher);
+      
+ 
+		if (ident != null) {
+			Identity manager =ident.getManager();
+      if(manager != null){
+      log.warn("manager name::"+manager.getDisplayName());
+      return manager.getDisplayName();
+      
+			}
+			
+			}
+      ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="requesterEmail">
+    <Script>
+      <Source><![CDATA[
+      import sailpoint.object.Identity;
+
+		String launcher =context.getUserName();
+		Identity ident = context.getObject(Identity.class, launcher);
+ 
+		if (ident != null) {
+			String email = (String) ident.getAttribute("email");
+			if (email != null) {
+				return email;
+			}
+			
+			}
+      ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="requestRejected"/>
+  <Variable initializer="COB-Workgroup-PSFIN-Treasury" name="treasuryWkgrp"/>
+  <Variable initializer="COB-Workgroup-PSFIN-Auditing" name="auditingWkgrp"/>
+  <Variable name="deptHead"/>
+  <Variable name="appName"/>
+  <Variable editable="true" name="defaultSecurityMessage"/>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-AuditRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-ProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-SpAcctProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="cobUtils"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-cobUtils"/>
+    <Reference class="sailpoint.object.Rule" name="Approval Library"/>
+    <Reference class="sailpoint.object.Rule" name="LCM Workflow Library"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start" posX="12" resultVariable="workflowLogPrefix">
+    <Script>
+      <Source><![CDATA[
+            import sailpoint.object.Application;
+            import sailpoint.tools.Util;
+
+      	String workflowLogPrefix = workflow.getName() + "::requestedBy::" + launcher + "::"; 
+		System.out.println("workflowLogPrefix::"+ workflowLogPrefix);
+		return workflowLogPrefix;
+	]]></Source>
+    </Script>
+    <Transition to="Build Identity Model"/>
+  </Step>
+  <Step action="call:getIdentityModel" icon="Task" name="Build Identity Model" posX="146" resultVariable="identityModel">
+    <Arg name="identityId">
+      <Script>
+        <Source><![CDATA[
+				return null;
+		  ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Description>
+			For now, build a map of the data. Eventually this will use the Identity
+			transformer to build a Map based on an existing identityName, or
+			Identity object.
+		</Description>
+    <Transition to="Select Application"/>
+  </Step>
+  <Step name="Select Application">
+    <Approval name="AccessRequest-SelectionApplication-Approval" owner="ref:launcher" return="appName" send="">
+      <Form name="HDAP-SelectGroup-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Select Group"/>
+          </Map>
+        </Attributes>
+        <Button action="next" label="Next"/>
+        <Button action="cancel" label="Cancel Request"/>
+        <Section label="Instructions" name="userInstructions" type="text">
+          <Field name="Directions" value="Select application name you would like to request access for from the drop-down below."/>
+        </Section>
+        <Section columns="1" label="Select Application">
+          <Field displayName="Application" displayType="combobox" name="appName" required="true" type="String">
+            <AllowedValuesDefinition>
+              <Script>
+                <Source><![CDATA[
+  
+      import sailpoint.object.Custom;
+      import java.util.List;
+      import sailpoint.tools.Util;
+                
+       Custom custom = context.getObjectByName(Custom.class, "COB-Custom-RequestAccess-Applications");
+	   List appList = (List) custom.get("Applications");
+	   if(appList != null){
+			return appList;
+			
+		}else{
+			return null;
+		}
+       
+
+              ]]></Source>
+              </Script>
+            </AllowedValuesDefinition>
+          </Field>
+        </Section>
+      </Form>
+    </Approval>
+    <Transition to="Account Request Form"/>
+  </Step>
+  <Step name="Account Request Form" posX="267">
+    <Approval name="Account Request Form Approval" owner="ref:launcher" return="identityModel" send="launcher,identityModel">
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+      <Arg name="workItemForm" value="COB-Form-PSFIN-RequestAccess"/>
+    </Approval>
+    <Transition to="Account Request Confirmation Form" when="approved"/>
+    <Transition to="end" when="!approved"/>
+  </Step>
+  <Step name="Account Request Confirmation Form" posX="378" posY="28">
+    <Approval name="Account Request Confirmation Form Approval" owner="ref:launcher" return="identityModel" send="launcher,identityModel">
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+      <Arg name="workItemForm" value="COB-Form-PSFIN-RequestAccess-Confirmation"/>
+    </Approval>
+    <Transition to="Account Request Form" when="!approved"/>
+    <Transition to="Check Training Pre-req" when="approved"/>
+  </Step>
+  <Step name="Check Training Pre-req" resultVariable="hasCompletedPreReq">
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name=""/>
+    <Script>
+      <Source><![CDATA[
+   //TODO: Logic goes here
+   boolean isComplete =false;
+   
+   reurn isComplete;
+   ]]></Source>
+    </Script>
+    <Transition to="Pre Requisite Not Completed"/>
+    <Transition to="Build Provisioning Plan" when="hasCompletedPreReq"/>
+  </Step>
+  <Step name="Pre Requisite Not Completed">
+    <Approval name="Pre-req-Not-Completed-Approval" owner="ref:launcher" send="identityName">
+      <Form name="Pre-req-Not-Completed-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Attention!"/>
+          </Map>
+        </Attributes>
+        <Button action="cancel" label="Go to Homepage"/>
+        <Button action="back" label="Go Back"/>
+        <Section type="datatable">
+          <Field name="Message" required="true">
+            <Script>
+              <Source><![CDATA[
+              
+              String str = "<font size='2' color='#ff0000'>";
+		 	  str = str+" "+identityName+" "+"has not completed all the training pre-requisites in MyLearning Plan";
+			  str = str + "</font>";	
+			  boolean isSendPreReqNotice=true;
+			  wfcontext.set("isSendPreReqNotice",isSendPreReqNotice);
+			  return str;
+              
+              ]]></Source>
+            </Script>
+          </Field>
+        </Section>
+      </Form>
+    </Approval>
+    <Transition to="Send Training Required Notice Email" when="isSendPreReqNotice"/>
+    <Transition to="end"/>
+  </Step>
+  <Step name="Send Training Required Notice Email">
+    <Arg name="identity" value="ref:identity"/>
+    <Arg name="requesterEmail" value="ref:requesterEmail"/>
+    <Script>
+      <Source><![CDATA[
+	//TODO: Add code to send email notification
+	]]></Source>
+    </Script>
+  </Step>
+  <Step name="Build Provisioning Plan" resultVariable="plan">
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="identityModel" value="ref:identityModel"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Script>
+      <Source><![CDATA[
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import sailpoint.object.*;
+import sailpoint.api.*;
+import sailpoint.api.SailPointContext;
+import sailpoint.object.Identity;
+import sailpoint.object.ManagedAttribute;
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.AccountRequest;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import sailpoint.workflow.WorkflowContext;
+
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+
+        Identity ident=context.getObjectByName(Identity.class,identityName);  
+        //Create PSFIN account
+        String appName="Dev_PeopleSoftFinancials";
+        ProvisioningPlan.AccountRequest psFinAcctReq= new ProvisioningPlan.AccountRequest();
+        psFinAcctReq.setOperation(ProvisioningPlan.AccountRequest.Operation.Create);
+        psFinAcctReq.setApplication(appName);
+        psFinAcctReq.setNativeIdentity(identityName);
+        psFinAcctReq.add(new ProvisioningPlan.AttributeRequest("EmailUser","true"));
+	    psFinAcctReq.add(new ProvisioningPlan.AttributeRequest("UserID",identityModel.get("UserID")));
+	    psFinAcctReq.add(new ProvisioningPlan.AttributeRequest("PrimaryEmailAddress",identityModel.get("PrimaryEmailAddress")));
+	    psFinAcctReq.add(new ProvisioningPlan.AttributeRequest("WorkListUser","true"));
+       	psFinAcctReq.add(new ProvisioningPlan.AttributeRequest("UserDescription",identityModel.get("UserDescription")));
+       	psFinAcctReq.add(new ProvisioningPlan.AttributeRequest("password",getPasswordFor_S_Account()));
+       	psFinAcctReq.add(new ProvisioningPlan.AttributeRequest("PasswordExpired", "false"));
+       	psFinAcctReq.add(new ProvisioningPlan.AttributeRequest("SymbolicID","PSFNDV2"));
+		ProvisioningPlan plan = new ProvisioningPlan();
+        plan.setIdentity(ident);
+		plan.add(psFinAcctReq);
+		return plan;
+	]]></Source>
+    </Script>
+    <Transition to="ProvisioningProject"/>
+  </Step>
+  <Step action="compileProvisioningProject" icon="Default" name="ProvisioningProject" posX="762" resultVariable="project">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Transition to="BuildApprovalSet" when="script:return !Util.isNullOrEmpty(plan)"/>
+    <Transition to="end"/>
+  </Step>
+  <Step action="call:buildApprovalSet" name="BuildApprovalSet" posX="877" resultVariable="approvalSet">
+    <Arg name="plan" value="ref:plan"/>
+    <Return name="approvalSet" to="approvalSet"/>
+    <Transition to="CreateIdentityRequest"/>
+  </Step>
+  <Step action="call:createIdentityRequest" icon="Task" name="CreateIdentityRequest" posX="1005" resultVariable="identityRequest">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="source">
+      <Script>
+        <Source><![CDATA[
+             return workflow.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="priority" value="ref:priority"/>
+    <Arg name="approvalSet" value="ref:approvalSet"/>
+    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
+    <Arg name="flow" value="LCM"/>
+    <Return name="identityRequestId" to="identityRequestId"/>
+    <Transition to="get Launcher Details"/>
+  </Step>
+  <Step name="Dept Head Approval">
+    <Approval mode="serial" name="DeptHead-Approval" owner="ref:deptHead" return="requestRejected,identityModel" send="identityName,identityModel">
+      <AfterScript>
+        <Source><![CDATA[
+          import sailpoint.workflow.IdentityRequestLibrary;
+          import sailpoint.object.*;
+   		  String approvalStatus = null;     
+   		  ApprovalSet set = approvalSet;
+   		  List items = approvalSet.getItems();
+		  String firstName=identityModel.get("firstName");
+		  String lastName=identityModel.get("lastName");
+		  List comments = new ArrayList();
+		  
+		  log.debug("Approver Comments :"+ requestRejected);
+		  
+		  if(identityModel.get("managerComments")!=null){
+		  	Comment cmt = new Comment(identityModel.get("deptHeadComments").toString(), identityModel.get("deptHeadDisplayName"));
+		  	comments.add(cmt);
+		  }
+		  if(approval.getCompletionState().toString().equals("Finished")){
+        		if(requestRejected != null && requestRejected.equals("true")){
+            		approvalStatus = "REJECTED";
+					for(ApprovalItem item : items){
+						item.setComments(comments);
+						item.reject();
+					}
+            	}else{
+            		approvalStatus = "APPROVED";
+					for(ApprovalItem item : items){
+						item.setComments(comments);
+						item.approve();
+					}
+        		}
+        	}	
+        	
+            IdentityRequestLibrary.assimilateWorkItemApprovalSetToIdentityRequest(wfcontext, approvalSet);
+            auditDecisions(item);
+        ]]></Source>
+      </AfterScript>
+      <Arg name="workItemType" value="Approval"/>
+      <Arg name="workItemIdentityRequestId" value="ref:identityRequestId"/>
+      <Arg name="workItemElectronicSignature" value="ref:managerElectronicSignature"/>
+      <Arg name="workItemRequester" value="$(launcher)"/>
+      <Arg name="workItemDescription">
+        <Script>
+          <Source><![CDATA[
+        	String value="Manager Approval - New PeopleSoft Financials Account/Access Request :";
+        	value= value + identityModel.get("firstName")+" "+ identityModel.get("lastName");
+            return value;
+          ]]></Source>
+        </Script>
+      </Arg>
+      <Arg name="workItemNotificationTemplate" value="COB-EmailTemplate-PSFIN-AccessRequest-DeptHead-Approval"/>
+      <Arg name="workItemTargetClass" value="sailpoint.object.Identity"/>
+      <Arg name="workItemTargetName" value="ref:identityName"/>
+      <Arg name="workItemPriority" value="ref:priority"/>
+      <Arg name="workItemForm" value="COB-PSFIN-AccessRequest-DeptHead-Approval"/>
+      <Arg name="requesterEmail" value="ref:requesterEmail"/>
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+      <Arg name="deptHeadDisplayName" value="ref:deptHeadDisplayName"/>
+    </Approval>
+    <Transition to="end" when="script: return requestRejected"/>
+    <Transition to="Auditing Approval"/>
+  </Step>
+  <Step name="Auditing Approval">
+    <Approval mode="serial" name="Auditing-Approval" owner="ref:auditingWkgrp" return="requestRejected,identityModel" send="identityName,identityModel">
+      <AfterScript>
+        <Source><![CDATA[
+          import sailpoint.workflow.IdentityRequestLibrary;
+          import sailpoint.object.*;
+   		  String approvalStatus = null;     
+   		  ApprovalSet set = approvalSet;
+   		  List items = approvalSet.getItems();
+		  String firstName=identityModel.get("firstName");
+		  String lastName=identityModel.get("lastName");
+		  List comments = new ArrayList();
+		  
+		  log.debug("Approver Comments :"+ requestRejected);
+		  
+		  if(identityModel.get("managerComments")!=null){
+		  	Comment cmt = new Comment(identityModel.get("auditingComments").toString(), identityModel.get("auditingWkgrpDisplayName"));
+		  	comments.add(cmt);
+		  }
+		  if(approval.getCompletionState().toString().equals("Finished")){
+        		if(requestRejected != null && requestRejected.equals("true")){
+            		approvalStatus = "REJECTED";
+					for(ApprovalItem item : items){
+						item.setComments(comments);
+						item.reject();
+					}
+            	}else{
+            		approvalStatus = "APPROVED";
+					for(ApprovalItem item : items){
+						item.setComments(comments);
+						item.approve();
+					}
+        		}
+        	}	
+        	
+            IdentityRequestLibrary.assimilateWorkItemApprovalSetToIdentityRequest(wfcontext, approvalSet);
+            auditDecisions(item);
+        ]]></Source>
+      </AfterScript>
+      <Arg name="workItemType" value="Approval"/>
+      <Arg name="workItemIdentityRequestId" value="ref:identityRequestId"/>
+      <Arg name="workItemElectronicSignature" value="ref:managerElectronicSignature"/>
+      <Arg name="workItemRequester" value="$(launcher)"/>
+      <Arg name="workItemDescription">
+        <Script>
+          <Source><![CDATA[
+        	String value="Auditing Approval - New PeopleSoft Financials Account/Access Request :";
+        	value= value + identityModel.get("firstName")+" "+ identityModel.get("lastName");
+            return value;
+          ]]></Source>
+        </Script>
+      </Arg>
+      <Arg name="workItemNotificationTemplate" value="COB-EmailTemplate-PSFIN-AccessRequest-Auditing-Approval"/>
+      <Arg name="workItemTargetClass" value="sailpoint.object.Identity"/>
+      <Arg name="workItemTargetName" value="ref:identityName"/>
+      <Arg name="workItemPriority" value="ref:priority"/>
+      <Arg name="workItemForm" value="COB-PSFIN-AccessRequest-Auditing-Approval"/>
+      <Arg name="requesterEmail" value="ref:requesterEmail"/>
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+      <Arg name="auditingWkgrpDisplayName" value="ref:auditingWkgrpDisplayName"/>
+    </Approval>
+    <Transition to="end" when="script: return requestRejected"/>
+    <Transition to="Treasury Approval" when="isTreasuryApproval"/>
+    <Transition to="Build Provisioning Plan"/>
+  </Step>
+  <Step name="Treasury Approval">
+    <Approval mode="serial" name="Auditing-Approval" owner="ref:treasuryWkgrp" return="requestRejected,identityModel" send="identityName,identityModel">
+      <AfterScript>
+        <Source><![CDATA[
+          import sailpoint.workflow.IdentityRequestLibrary;
+          import sailpoint.object.*;
+   		  String approvalStatus = null;     
+   		  ApprovalSet set = approvalSet;
+   		  List items = approvalSet.getItems();
+		  String firstName=identityModel.get("firstName");
+		  String lastName=identityModel.get("lastName");
+		  List comments = new ArrayList();
+		  
+		  log.debug("Approver Comments :"+ requestRejected);
+		  
+		  if(identityModel.get("managerComments")!=null){
+		  	Comment cmt = new Comment(identityModel.get("treasuryComments").toString(), identityModel.get("treasuryWkgrpDisplayName"));
+		  	comments.add(cmt);
+		  }
+		  if(approval.getCompletionState().toString().equals("Finished")){
+        		if(requestRejected != null && requestRejected.equals("true")){
+            		approvalStatus = "REJECTED";
+					for(ApprovalItem item : items){
+						item.setComments(comments);
+						item.reject();
+					}
+            	}else{
+            		approvalStatus = "APPROVED";
+					for(ApprovalItem item : items){
+						item.setComments(comments);
+						item.approve();
+					}
+        		}
+        	}	
+        	
+            IdentityRequestLibrary.assimilateWorkItemApprovalSetToIdentityRequest(wfcontext, approvalSet);
+            auditDecisions(item);
+        ]]></Source>
+      </AfterScript>
+      <Arg name="workItemType" value="Approval"/>
+      <Arg name="workItemIdentityRequestId" value="ref:identityRequestId"/>
+      <Arg name="workItemElectronicSignature" value="ref:managerElectronicSignature"/>
+      <Arg name="workItemRequester" value="$(launcher)"/>
+      <Arg name="workItemDescription">
+        <Script>
+          <Source><![CDATA[
+        	String value="Treasury Approval - New PeopleSoft Financials Account/Access Request :";
+        	value= value + identityModel.get("firstName")+" "+ identityModel.get("lastName");
+            return value;
+          ]]></Source>
+        </Script>
+      </Arg>
+      <Arg name="workItemNotificationTemplate" value="COB-EmailTemplate-PSFIN-AccessRequest-Treasury-Approval"/>
+      <Arg name="workItemTargetClass" value="sailpoint.object.Identity"/>
+      <Arg name="workItemTargetName" value="ref:identityName"/>
+      <Arg name="workItemPriority" value="ref:priority"/>
+      <Arg name="workItemForm" value="COB-PSFIN-AccessRequest-Treasury-Approval"/>
+      <Arg name="requesterEmail" value="ref:requesterEmail"/>
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+      <Arg name="treasuryWkgrpDisplayName" value="treasuryWkgrpDisplayName"/>
+    </Approval>
+    <Transition to="end" when="script: return requestRejected"/>
+    <Transition to="Provision" when="approved"/>
+  </Step>
+  <Step name="Provision">
+    <Arg name="project" value="ref:updatedProject"/>
+    <Arg name="maxRetries"/>
+    <Arg name="provisioningRetryThreshold"/>
+    <Arg name="plan" value="ref:updatedPlan"/>
+    <Arg name="priority" value="ref:workItemPriority"/>
+    <Arg name="trace" value="ref:trace"/>
+    <Arg name="identityRequestId" value="ref:identityRequestId"/>
+    <Arg name="retryProject"/>
+    <Arg name="retries"/>
+    <Arg name="enableRetryRequest"/>
+    <Arg name="foregroundProvisioning" value="ref:foregroundProvisioning"/>
+    <Description>Call a sub process to provision</Description>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="Provision with retries"/>
+    </WorkflowRef>
+    <Transition to="AuditProvision"/>
+  </Step>
+  <Step icon="Audit" name="AuditProvision" posX="425" posY="104">
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="project" value="ref:updatedProject"/>
+    <Arg name="source" value="COB-Workflow-PSFIN-AccessRequest"/>
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+
+		Identity idn = context.getObject(Identity.class, identityName);
+		cobProvisioningAuditLog(logPrefix, source, launcher, project, idn);
+
+		cobLog(logPrefix, "Exit Step");
+		]]></Source>
+    </Script>
+    <Transition to="Refresh Identity"/>
+  </Step>
+  <Step action="call:refreshIdentity" icon="Task" name="Refresh Identity" posX="1381" posY="102">
+    <Arg name="refreshLinks" value="true"/>
+    <Arg name="forceLinkAttributePromotion" value="true"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="promoteAttributes" value="true"/>
+    <Arg name="processTriggers" value="false"/>
+    <Description>
+			Add arguments as necessary to enable refresh features. Typically you
+			only want this to correlate roles. Don't ask for provisioning since
+			that
+			can result in provisioning policies that need to be presented and it's
+			too late for that. This is only to get role detection and exception
+			entitlements in the cube.
+		</Description>
+    <Transition to="Complete Identity Request"/>
+  </Step>
+  <Step action="call:completeIdentityRequest" icon="Task" name="Complete Identity Request" posX="994" posY="107" resultVariable="identityRequest">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="identityRequestId" value="ref:identityRequestId"/>
+    <Arg name="approvalSet" value="ref:approvalSet"/>
+    <Arg name="autoVerify" value="true"/>
+    <Transition to="Send Notifications"/>
+  </Step>
+  <Step name="Send Notifications" posX="1130" posY="107">
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="requesterDisplayName" value="ref:requesterDisplayName"/>
+    <Arg name="requestor" value="ref:launcher"/>
+    <Arg name="identityModel" value="ref:identityModel"/>
+    <Script>
+      <Source><![CDATA[
+	  	import java.util.*;
+		import sailpoint.object.EmailTemplate;
+		import sailpoint.object.EmailOptions;
+		import java.util.Map;
+		import java.util.HashMap;
+		import java.text.DateFormat;
+		import java.text.SimpleDateFormat;		
+		import sailpoint.object.*;
+		import sailpoint.server.Auditor;
+
+		String logPrefix = workflow.getName() + "::" + identityName + "::" + wfcontext.getStep().getName() + "::";
+
+		Identity user = context.getObject(Identity.class, identityName);
+        String requestorEmail="";
+        String managerDisplayName = "";
+		List emails = new ArrayList();
+		Identity manager=context.getObjectByName(Identity.class,identityModel.get("sponsorManager"));
+		if (manager != null) {
+            managerDisplayName=manager.getDisplayName();
+			String managerEmail = (String) manager.getAttribute("email");
+			emails.add(managerEmail);
+		}
+
+		if (requestor != null) {
+			Identity requestorIdn = context.getObject(Identity.class, requestor);
+			if (requestorIdn != null) {
+				if (requestorIdn.getAttribute("email") != null) {
+			      requestorEmail = (String) requestorIdn.getAttribute("email");
+					if (requestorEmail != null) {
+						emails.add(requestorEmail);
+					}
+				}
+			}
+		}
+
+		Map variables = new HashMap();
+        variables.put("managerDisplayName",managerDisplayName);
+        variables.put("identityModel", identityModel);
+        variables.put("accountType", identityModel.get("accountType"));
+		variables.put("firstName", identityModel.get("firstName"));
+		variables.put("lastName", identityModel.get("lastName"));
+		if(isBPSRequest){
+        variables.put("userName", "selbmum" + "\\" + sAMAccountName);
+        }else{
+		variables.put("userName", "IAM-AD-DEV" + "\\" + sAMAccountName);
+        }
+		variables.put("email", identityModel.get("email"));
+		variables.put("endDate", identityModel.get("contractEndDate"));
+		variables.put("userPassword", identityModel.get("defaultPassword"));
+		variables.put("requesterDisplayName", requesterDisplayName);
+		//variables.put("defaultSecurityMessage", wfcontext.getVariable("defaultSecurityMessage"));
+
+		boolean sendEmail = false;
+		if (Util.size(user.getLinks()) != 0) {
+			sendEmail = true;
+		}
+
+		if (sendEmail) {
+			String accountInfoTemplate = "COB-EmailTemplate-EmployeeAcctInfo";
+			String passwordInfoTemplate = "COB-EmailTemplate-EmployeeAcct-ADPassword";
+            String confirmationEmailTemplate="COB-EmailTemplate-SponsoredAccount-Creation-Success";
+        
+            EmailTemplate infoEmailTemplate = context.getObjectByName(EmailTemplate.class,accountInfoTemplate);
+            EmailTemplate pswdEmailTemplate = context.getObjectByName(EmailTemplate.class,passwordInfoTemplate);
+            EmailTemplate confirmEmailTemplate = context.getObjectByName(EmailTemplate.class,confirmationEmailTemplate);
+
+        
+            EmailOptions emailOptions= new EmailOptions();
+            emailOptions.setVariables(variables);
+            emailOptions.setTo(emails);
+            emailOptions.setSendImmediate(true);
+        
+            EmailOptions emailOptions2= new EmailOptions();
+            emailOptions2.setVariables(variables);
+            emailOptions2.setTo(requestorEmail);
+            emailOptions2.setSendImmediate(true);
+        
+            context.sendEmailNotification(infoEmailTemplate, emailOptions);
+            context.sendEmailNotification(pswdEmailTemplate, emailOptions);
+            context.sendEmailNotification(confirmEmailTemplate, emailOptions2);
+		  }
+		
+	 log.warn("Email Sent");
+	  ]]></Source>
+    </Script>
+    <Transition to="end"/>
+  </Step>
+  <Step name="end"/>
+  <Step catches="complete" icon="Catches" name="HandleException" posX="37" posY="690">
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		try {
+	            cobLog(logPrefix, "EnterStep");
+				if(!wfcontext.getWorkflowCase().getErrors().isEmpty()){
+				sendErrorEmailFromWorkflow(wfcontext);
+				}
+				cobLog(logPrefix, "ExitStep");
+			}
+		 catch (Throwable e) {
+			cobLog(logPrefix, "Exception:");
+			e.printStackTrace();
+		}
+	  ]]></Source>
+    </Script>
+  </Step>
+</Workflow>

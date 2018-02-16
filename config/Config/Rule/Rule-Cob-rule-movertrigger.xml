@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-MoverTrigger" type="IdentityTrigger">
+  <ReferencedRules>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-AttrSynch-RulesLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-Mover-RulesLibrary"/>
+  </ReferencedRules>
+  <Signature returnType="boolean"/>
+  <Source><![CDATA[
+import org.apache.log4j.Logger;  
+import org.apache.log4j.Level;  
+import sailpoint.object.Identity;
+import java.util.*;
+
+Logger log=Logger.getLogger("cob.rule.mover.identitytrigger");
+log.debug("----Rule Start----");
+
+String wfName = "COB-Workflow-Mover";  
+String idAttrib = "launchExplanation-" + wfName;  
+  
+String idName = previousIdentity.getName();  
+log.debug("Evaluating workflow trigger for Identity:" + idName);  
+  
+// Let's start off with the posture that we assume the workflow "should" launch  
+// for the Identity.  Then, like a pilot, we will do a "pre-flight" check in the  
+// script to ensure all required fields and state are available before launching  
+// the workflow.  If any pre-flight test fails, then this flag gets toggled  
+// and we append a description message to a 'launchExplanation' attribute that  
+// will be stored on the Identity cube.  
+boolean shouldLaunchWorkflow = isTriggerMoverRule(context, previousIdentity, newIdentity);
+  
+// Declare a StringBuilder that collects the reasons why the rule should not  
+// launch the workflow.  These get put on the newIdentity to "explain" why  
+// the workflow does not launch.  By assembling these all in one string builder  
+// we can put an entire list of explanations on the cube.  This allows  
+// administrators to understand in 1 paragraph of text why this specific  
+// workflow trigger chose not to launch for an Identity.  
+StringBuilder noLaunchReasons = new StringBuilder();  
+  
+
+  
+/**
+*
+*We should only allow the mover workflow to run
+*once daily
+*
+*/
+        Date date = previousIdentity.getLastRefresh();
+        Calendar c = Calendar.getInstance();
+        c.setTime(date);
+        c.add(Calendar.DATE, 1);  // number of days to add
+        Date reqDate= c.getTime();
+        Date currentDate= new Date();
+        
+  if(currentDate.before(reqDate)){
+       shouldLaunchWorkflow = false;
+  }
+  
+if (shouldLaunchWorkflow) {  
+   log.debug("Launching workflow for identity:" + idName);  
+   newIdentity.getAttributes().put(idAttrib, "Workflow " + wfName + " launched at " + timeStamp);  
+} else {  
+   // Add the explanation for why this workflow is not launched to a  
+   // non-searchableidentity attribute.  
+   newIdentity.getAttributes().put(idAttrib, noLaunchReasons.toString());   
+   log.debug("Skipping workflow launch for identity:" + idName);   
+}  
+  
+return shouldLaunchWorkflow;
+	  	
+
+  
+  ]]></Source>
+</Rule>

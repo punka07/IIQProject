@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" libraries="Identity" name="COB-Workflow-HDAP-Create-Employee" type="Subprocess">
+  <Variable input="true" name="project" output="true">
+    <Description>Project that will be provisioned.</Description>
+  </Variable>
+  <Variable input="true" name="identityName"/>
+  <Variable input="true" name="source"/>
+  <Variable input="true" name="launcher"/>
+  <Variable name="plan">
+    <Description>The provisioning plan which is built during the workflow</Description>
+  </Variable>
+  <Variable name="result"/>
+  <Variable name="LCMEvent"/>
+  <Variable input="true" name="email"/>
+  <Variable input="true" name="defaultPassword"/>
+  <Variable input="true" name="isBPSEmployee"/>
+  <Variable initializer=",cn=Internal Users,dc=boston1,dc=cob" name="hdapBaseDN"/>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-AuditRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-SpAcctProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="cobUtils"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start" posX="17" posY="104" resultVariable="workflowLogPrefix">
+    <Script>
+      <Source><![CDATA[
+      	String workflowLogPrefix = workflow.getName() + "::" + identityName + "::"; 
+		return workflowLogPrefix;
+	  ]]></Source>
+    </Script>
+    <Transition to="HDAP_Provision_Plan"/>
+  </Step>
+  <Step icon="Message" name="HAPD_Provision_Plan" posX="117" posY="104" resultVariable="plan">
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="email" value="ref:email"/>
+    <Arg name="defaultPassword" value="ref:defaultPassword"/>
+    <Arg name="isBPSEmployee" value="ref:isBPSEmployee"/>
+    <Arg name="hdapBaseDN" value="ref:hdapBaseDN"/>
+    <Script>
+      <Source><![CDATA[
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import sailpoint.api.SailPointContext;
+import sailpoint.object.Identity;
+import sailpoint.object.ManagedAttribute;
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.AccountRequest;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import sailpoint.workflow.WorkflowContext;
+
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+
+    Identity ident=context.getObjectByName(Identity.class,identityName);  
+    String firstName= ident.getFirstname();
+    String lastName =ident.getLastname();
+    String displayName=ident.getDisplayName();
+    String sAMAccountName = ident.getStringAttribute("employeeId");
+    String departmentNumber=ident.getStringAttribute("departmentCode");
+        
+        
+        //create HDAP account
+        ProvisioningPlan.AccountRequest hdapAcctReq= new ProvisioningPlan.AccountRequest();
+        hdapAcctReq.setOperation(sailpoint.object.ProvisioningPlan.AccountRequest.Operation.Create);
+        hdapAcctReq.setApplication("Dev_HDAP");
+        hdapAcctReq.setNativeIdentity("cn="+identityName+hdapBaseDN);
+        List objClassList= new ArrayList();
+        objClassList.add("COBCustomobject");
+        objClassList.add("inetorgperson");
+        objClassList.add("person");
+        objClassList.add("top");
+        objClassList.add("organizationalPerson");
+        objClassList.add("orclUserV2");
+         
+
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("CN",sAMAccountName));
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("userPassword",context.encrypt("defaultPassword)));
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("dn","cn="+sAMAccountName+hdapBaseDN));
+        if(departmentNumber != null){
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("departmentNumber",departmentNumber ));
+        }
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("displayName",displayName));
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("employeeType","Full-Time"));
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("givenName",firstName));
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("mail",email));
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("SN",lastName));
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("uid",sAMAccountName));
+        hdapAcctReq.add(new ProvisioningPlan.AttributeRequest("objectClass",objClassList));
+        
+        wfcontext.setVariable("sAMAccountName", sAMAccountName);
+		    List lAccreqs = new ArrayList();
+		    lAccreqs.add(acctReqAD);
+        lAccreqs.add(hdapAcctReq);
+
+		    ProvisioningPlan plan = new ProvisioningPlan();
+        plan.setIdentity(ident);
+		    plan.setAccountRequests(lAccreqs);
+		    return plan;
+		]]></Source>
+    </Script>
+    <Transition to="HDAP_Provision_Project"/>
+  </Step>
+  <Step action="compileProvisioningProject" icon="Default" name="HDAP_Provision_Project" posX="267" posY="104" resultVariable="project">
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="project" value="ref:project"/>
+    <Arg name="noApplicationTemplates" value="true"/>
+    <Arg name="requireCreateTemplates" value="false"/>
+    <Arg name="optimisticProvisioning" value="false"/>
+    <Arg name="source" value="UI"/>
+    <Arg name="requester" value="spadmin"/>
+    <Arg name="noLocking" value="true"/>
+    <Transition to="Provision_HAPD"/>
+  </Step>
+  <Step action="call:provisionProject" icon="Provision" name="Provision_HDAP" posX="258" posY="100">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="background" value="false"/>
+    <Transition to="Refresh_Identity"/>
+  </Step>
+  <Step action="call:refreshIdentity" icon="Task" name="Refresh_Identity" wait="1">
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="refreshLinks" value="true"/>
+    <Arg name="synchronizeAttributes" value="true"/>
+    <Arg name="forceLinkAttributePromotion" value="true"/>
+    <Arg name="promoteAttributes" value="true"/>
+    <Transition to="ProvisioningResultsHDAP"/>
+  </Step>
+  <Step icon="Default" name="ProvisioningResultsHDAP" posX="557" posY="24">
+    <Script>
+      <Source><![CDATA[
+import sailpoint.tools.Util;
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+		cobLog(logPrefix, "wfcontext.getStep().getName()=" + wfcontext.getStep().getName());
+		if (!Util.isEmpty(wfcontext.getRootWorkflowCase().getMessages())) {
+			for (Object msgObj : wfcontext.getRootWorkflowCase().getMessages()) {
+				sailpoint.tools.Message msg = (sailpoint.tools.Message) msgObj;
+				cobLog(logPrefix, msg.getMessage());
+			}
+		} else {
+			cobLog(logPrefix, "No Errors reported during provisioning");
+		}
+		cobLog(logPrefix, "Exit Step");
+    	]]></Source>
+    </Script>
+    <Transition to="Audit_HDAP_Create"/>
+  </Step>
+  <Step icon="Audit" name="Audit_HDAP_Create" posX="567" posY="104">
+    <Arg name="source" value="ref:source"/>
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="project" value="ref:project"/>
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+		Identity idn = context.getObject(Identity.class, identityName);
+		cobProvisioningAuditLog(logPrefix, source, launcher, project, idn);
+		cobLog(logPrefix, "Exit Step");
+	]]></Source>
+    </Script>
+    <Transition to="End"/>
+  </Step>
+  <Step icon="Stop" name="End" posX="717" posY="104">
+    <Script>
+      <Source><![CDATA[
+		cobLog(workflowLogPrefix, "Exit Workflow");
+	  ]]></Source>
+    </Script>
+  </Step>
+  <Step catches="complete" icon="Catches" name="HandleException" posX="37" posY="690">
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		try {
+			if (!Util.isEmpty(wfcontext.getRootWorkflowCase().getMessages())) {
+				cobLog(logPrefix, "EnterStep");
+				
+				cobLog(logPrefix, "ExitStep");
+			}
+		} catch (Throwable e) {
+			cobLog(logPrefix, "Exception:");
+			e.printStackTrace();
+		}
+	  ]]></Source>
+    </Script>
+  </Step>
+</Workflow>

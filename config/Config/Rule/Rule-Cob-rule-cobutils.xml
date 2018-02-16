@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-cobUtils">
+  <Source><![CDATA[
+  import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TimeZone;
+import javax.naming.CompoundName;
+import javax.naming.Context;
+import javax.naming.InvalidNameException;
+import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
+import javax.naming.directory.BasicAttribute;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.InitialDirContext;
+import javax.naming.directory.ModificationItem;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
+import sailpoint.api.PasswordGenerator;
+import sailpoint.api.SailPointContext;
+import sailpoint.object.Application;
+import sailpoint.object.Custom;
+import sailpoint.object.Filter;
+import sailpoint.object.Filter.MatchMode;
+import sailpoint.object.Identity;
+import sailpoint.object.PasswordPolicy;
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.AccountRequest;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import sailpoint.object.QueryOptions;
+import sailpoint.tools.GeneralException;
+import sailpoint.tools.Util;
+  
+  
+   
+	
+  
+ public static String STRING_OF_ALPHA_NUM_CHARS = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+	public static String generateRandomDigit() {
+		return Integer.toString(new java.util.Random().nextInt(10));
+	}
+
+	public static String generateRandomAlphaNumericSymbol() {
+		return Character.toString(STRING_OF_ALPHA_NUM_CHARS.charAt(new java.util.Random().nextInt(36)));
+	}
+
+	public static Boolean[] SAMA_IS_DIGIT_ONLY = new Boolean[] { false, false, true, false, true, false, false };
+	public static Integer SAMA_LENGTH = SAMA_IS_DIGIT_ONLY.length;
+
+	public static String generateRandomSamAccountName(String prefix) {
+		String result = prefix == null ? "" : prefix;
+		Integer reqdLength = SAMA_LENGTH;
+		while (result.length() < reqdLength) {
+			if (SAMA_IS_DIGIT_ONLY[result.length()]) {
+				result += generateRandomDigit();
+			} else {
+				result += generateRandomAlphaNumericSymbol();
+			}
+		}
+		return result;
+	}
+
+	// Auto Logic
+	// Minimum characters 3 and maximum character 7.
+	// Format 1: All characters of last name and rotating characters for
+	// first name. e.g. Joe Alan. jalan,joalan,joealan
+	public static List generateSAMAccountNames(String givenName, String sn) {
+		Set result = new LinkedHashSet();
+		String firstName = "";
+		if (givenName != null) {
+			firstName =givenName.toLowerCase().replaceAll("\\W", "");
+			if (firstName.length() > 6) {
+				firstName = firstName.substring(0, 6);
+			}
+		}
+		String lastname = "";
+		if (sn != null) {
+			lastname = sn.toLowerCase().replaceAll("\\W", "");
+			if (lastname.length() > 6) {
+				lastname = lastname.substring(0, 6);
+			}
+		}
+		String sAMAccountName = "";
+		if (firstName.length() > 0 && lastname.length() > 0) {
+			for (int i = 1; i <= firstName.length(); i++) {
+				sAMAccountName = firstName.substring(0, i) + lastname;
+				if (sAMAccountName.length() > 7) {
+					sAMAccountName = sAMAccountName.substring(0, 7);
+				}
+				if (sAMAccountName.length() > 2) {
+					result.add(sAMAccountName);
+				}
+			}
+		}
+
+		if (firstName.length() < 5) {
+			String initialStr = firstName + lastname;
+			if (initialStr.length() > 6) {
+				initialStr = initialStr.substring(0, 6);
+			}
+			for (int i = initialStr.length(); i > firstName.length(); i--) {
+				sAMAccountName = initialStr.substring(0, i);
+				if (sAMAccountName.length() > 2) {
+					result.add(sAMAccountName);
+				} else {
+					break;
+				}
+			}
+		}
+
+		// Generate random sAMAAccountNames also
+		String prefix = "";
+		if (Util.isNotNullOrEmpty(firstName)) {
+			prefix = firstName;
+		} else if (Util.isNotNullOrEmpty(lastname)) {
+			prefix = lastname;
+		}
+		if (prefix.length() > 2) {
+			prefix = prefix.substring(0, 2);
+		}
+		int size = 25 - result.size();
+		for (int i = 0; i < size; i++) {
+			result.add(generateRandomSamAccountName(prefix));
+		}
+		return new ArrayList(result);
+	}
+	
+ public static List generateEmailAddresses(String applicationName, String firstName, String lastName){
+        String mail="";
+        String defaultMail="";
+   if(applicationName.equals("Dev_CityHall_AD")){
+        defaultMail=firstName+"."+lastName+"@cityofboston.gov";
+   }else{
+        defaultMail=firstName+"."+lastName+"@bostonpublicschools.org";
+   }
+       
+        List maiList = new ArrayList();
+        maiList.add(defaultMail);
+        for(int i=1; i<25;i++){
+             if(applicationName.equals("Dev_CityHall_AD")){
+            mail=firstName+"."+lastName+i+"@cityofboston.gov";
+             }else{
+             mail=firstName+"."+lastName+i+"@bostonpublicschools.org";   
+             }
+           maiList.add(mail);
+        }
+        return maiList;
+    }
+ 
+  
+public static Collection cobRetrieveAccountsFromADEnvironment(String searchFilter, String[] attributesToReturn, String baseDN,
+			Hashtable env) throws GeneralException, NamingException {
+		Collection searchResults = new ArrayList();
+		DirContext adCtx = null;
+		NamingEnumeration response = null;
+		try {
+			//String baseDN = adEnv.getKey();
+			adCtx = new InitialDirContext(env);
+			SearchControls searchCtls = new SearchControls();
+			searchCtls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+			searchCtls.setReturningAttributes(attributesToReturn);
+			searchCtls.setReturningObjFlag(false);
+			response = adCtx.search(baseDN, searchFilter, searchCtls);
+			while (response.hasMore()) {
+				searchResults.add(response.next());
+			}
+		} catch (Throwable t) {
+			t.printStackTrace();
+			throw t;
+		} finally {
+			if (response != null) {
+				try {
+					response.close();
+				} catch (NamingException ignore) {//NOPMD - suppress PMD warning (ignore Exception on context close)
+				}
+			}
+			if (adCtx != null) {
+				try {
+					adCtx.close();
+				} catch (NamingException ignore) {//NOPMD - suppress PMD warning (ignore Exception on context close)
+				}
+			}
+		}
+
+		return searchResults;
+	}
+
+	public static Collection cobRetrieveAccountsFromADEnvironment(String searchFilter, String[] attributesToReturn,
+			Entry adEnv) throws GeneralException, NamingException {
+
+		return cobRetrieveAccountsFromADEnvironment(searchFilter, attributesToReturn, adEnv.getKey(), adEnv.getValue());
+	}
+
+      public static String getDomainFromDn(String distinguishedName) throws InvalidNameException {
+		CompoundName compoundName = new CompoundName(distinguishedName, getLdapCompaundNameSyntax());
+		//
+		return getDomainFromDn(compoundName);
+	}
+
+	public static String getDomainFromDn(CompoundName compoundName) throws InvalidNameException {
+		String domain = compoundName.getPrefix(3).getSuffix(2).toString().replace("DC=", "").replace("dc=", "");
+		//
+		return domain;
+	}
+
+	public static String getBaseDN(String distinguishedName) throws InvalidNameException {
+		CompoundName compoundName = new CompoundName(distinguishedName, getLdapCompaundNameSyntax());
+		//
+		return getBaseDN(compoundName);
+	}
+
+	public static String getBaseDN(CompoundName compoundName) throws InvalidNameException {
+		String baseDN = compoundName.getPrefix(3).toString().toLowerCase();
+		//
+		return baseDN;
+	}
+	
+	public static Properties getLdapCompaundNameSyntax() {
+		Properties cnProperties = new Properties();
+		cnProperties.put("jndi.syntax.direction", "right_to_left");
+		cnProperties.put("jndi.syntax.separator", ",");
+		cnProperties.put("jndi.syntax.ignorecase", "true");
+		cnProperties.put("jndi.syntax.escape", "\\");
+		cnProperties.put("jndi.syntax.beginquote", "\"");
+		cnProperties.put("jndi.syntax.beginquote2", "'");
+		cnProperties.put("jndi.syntax.trimblanks", "true");
+		cnProperties.put("jndi.syntax.separator.ava", ",");
+		cnProperties.put("jndi.syntax.separator.typeval", "=");
+		//
+		return cnProperties;
+	}
+  
+	public static boolean isInAD(String applicationName, String searchFilter, SailPointContext context) throws GeneralException, NamingException {
+		boolean isSAMAccountNameInAD = false;
+		Map adEnvironments = getActiveDirectoryEnvironments(applicationName, context);
+		for (Entry adEnv : adEnvironments.entrySet()) {
+			Collection  results = cobRetrieveAccountsFromADEnvironment(searchFilter, new String[] {"sAMAccountName"}, adEnv);
+			isSAMAccountNameInAD = results.size() > 0;
+			if (isSAMAccountNameInAD) {
+				break;
+			}
+		}
+		//
+		return isSAMAccountNameInAD;
+	}
+
+	public static boolean isSAMAccountNameInAD(String applicationName,String sAMAccountName, SailPointContext context) throws GeneralException, NamingException {
+		String searchFilter = "(sAMAccountName=" + sAMAccountName + ")";
+		//
+		return isInAD(applicationName,  searchFilter, context);
+	}
+  
+  	public static Map getActiveDirectoryEnvironments(String adApplicationName, SailPointContext context)
+			throws GeneralException {
+		Map dnToDomainEnvironmentMap = new HashMap();
+		Application appAD = context.getObjectByName(Application.class, adApplicationName);
+		if (appAD != null) {
+			sailpoint.object.Attributes adAppAttrs = appAD.getAttributes();
+			if (adAppAttrs != null) {
+			
+				List configs = adAppAttrs.getList("domainSettings");
+				for (Map config : configs) {
+					String bindDN = (String) config.get("user");
+					String pword = (String) config.get("password");
+					String domainDN = (String) config.get("domainDN");
+				  String port="389";
+          //Check application name for host
+					String host="";
+          if(adApplicationName.equals("Dev_CityHall_AD")){
+             host= (String) config.get("forestName");
+          }else{
+            List servers= (List) config.get("servers");
+            host="140.241.254.108";
+            //log.warn("host::"+host);
+            //bindDN ="bpssvc@selbmum.local";
+            domainDN="OU=Staff,DC=selbmum,DC=local";
+          }
+					Hashtable ldapEnv = new Hashtable();
+					ldapEnv.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+					ldapEnv.put(Context.PROVIDER_URL, "ldap://" + host + ":" + port);
+					ldapEnv.put(Context.REFERRAL, "follow");
+					ldapEnv.put(Context.SECURITY_AUTHENTICATION, "simple");
+					ldapEnv.put(Context.SECURITY_PRINCIPAL, bindDN);
+					ldapEnv.put(Context.SECURITY_CREDENTIALS, context.decrypt(pword));
+          //log.warn("ldapEnv::"+ldapEnv);
+					dnToDomainEnvironmentMap.put(domainDN, ldapEnv);
+				}
+			}
+		}
+		return dnToDomainEnvironmentMap;
+	}
+	
+	public static Hashtable getADEnvironmentForDistinguishedName(String distinguishedName, SailPointContext context)
+			throws GeneralException, InvalidNameException {
+		Hashtable adEnv = null;
+		Map adEnvironments = getActiveDirectoryEnvironments("Dev_CityHall_AD", context);
+		if (adEnvironments == null) {
+			throw new GeneralException("Dev_CityHall_AD" + " environment not found in Sailpoint Custom setup.");
+		} else {
+			String baseDN = getBaseDN(distinguishedName);
+			adEnv = adEnvironments.get(baseDN);
+		}
+		return adEnv;
+	}
+  
+public static boolean isSAMAccountNameInIIQ(String sAMAccountName, SailPointContext context) throws GeneralException {
+		boolean isSAMAccountNameInIIQ = false;
+		QueryOptions qo = new QueryOptions();
+		qo.addFilter(Filter.ignoreCase(Filter.eq("sAMAccountName", sAMAccountName)));
+		isSAMAccountNameInIIQ = !Util.isEmpty(context.getObjects(Identity.class, qo));
+		
+		if (!isSAMAccountNameInIIQ) {
+			qo = new QueryOptions();
+			qo.addFilter(Filter.ignoreCase(Filter.eq("name", sAMAccountName)));
+			isSAMAccountNameInIIQ = !Util.isEmpty(context.getObjects(Identity.class, qo));
+		}
+		if (!isSAMAccountNameInIIQ) {
+			qo = new QueryOptions();
+			qo.addFilter(Filter.ignoreCase(Filter.like("name", "\\" + sAMAccountName, MatchMode.END)));
+			isSAMAccountNameInIIQ = !Util.isEmpty(context.getObjects(Identity.class, qo));
+		}
+		//
+		return isSAMAccountNameInIIQ;
+	}
+
+
+public static boolean isMailInAD(String applicationName, String mail, SailPointContext context) throws GeneralException, NamingException {
+		String searchFilter = "(mail=" + mail + ")";
+		
+		return isInAD(applicationName,searchFilter, context);
+	}
+
+	
+
+	public static boolean isMailInIIQ(String mail, SailPointContext context) throws GeneralException {
+		boolean isMailInIIQ = false;
+		QueryOptions qo = new QueryOptions();
+		qo.addFilter(Filter.ignoreCase(Filter.eq("email", mail)));
+		isMailInIIQ = !Util.isEmpty(context.getObjects(Identity.class, qo));
+		//
+		return isMailInIIQ;
+	}
+
+	public static boolean isMailUnique(String applicationName,String mail, SailPointContext context) throws GeneralException, NamingException {
+		boolean isMailUnique = true;
+		if (mail != null) {
+			if (isMailInAD(applicationName, mail, context)) {
+				isMailUnique = false;
+			} else if (isMailInIIQ(mail, context)) {
+				isMailUnique = false;
+			}
+		}
+		//
+		return isMailUnique;
+	}
+	
+  public String generateUniqueEmailAddress(String applicationName, String firstName, String lastName, SailPointContext context) throws GeneralException, NamingException {
+      List emailAddresses= generateEmailAddresses(applicationName,firstName, lastName);
+      String uniqueEmailAddress = null;
+    for(Object emailAddressObj: emailAddresses){
+      String emailAddress = (String) emailAddressObj;
+      if(isMailUnique(applicationName,emailAddress,context)){
+        uniqueEmailAddress= emailAddress;
+        break;
+        
+        
+      }
+    }
+    
+    if(uniqueEmailAddress== null){
+      		throw new RuntimeException("Unable to generate unique emailAddress for \"" + firstName + "\" \"" + lastName + "\"");
+		} else {
+			return uniqueEmailAddress;
+		}
+   }
+
+  
+  public String generateUniqueSAMAccountName(String applicationName,String givenName, String sn, SailPointContext context) throws GeneralException, NamingException {
+		List sAMAccountNames = generateSAMAccountNames(givenName, sn);
+		
+		
+		// Check
+		String uniqueSAMAccountName = null;
+		for (Object sAMAccountNameObj : sAMAccountNames) {
+			String sAMAccountName = (String) sAMAccountNameObj;
+			if (!isSAMAccountNameInIIQ(sAMAccountName, context) && !isSAMAccountNameInAD(applicationName,sAMAccountName, context) ) {
+				uniqueSAMAccountName = sAMAccountName;
+				break;
+			}
+		}
+		//
+		if (uniqueSAMAccountName == null) {
+			throw new RuntimeException("Unable to generate unique sAMAccountName for \"" + givenName + "\" \"" + sn + "\"");
+		} else {
+			return uniqueSAMAccountName;
+		}
+	}
+  
+  public String getADHost(String adApplicationName, SailPointContext context) throws GeneralException {
+    	String host="";
+    Map dnToDomainEnvironmentMap = new HashMap();
+		Application appAD = context.getObjectByName(Application.class, adApplicationName);
+		if (appAD != null) {
+			sailpoint.object.Attributes adAppAttrs = appAD.getAttributes();
+			if (adAppAttrs != null) {
+			
+				List configs = adAppAttrs.getList("domainSettings");
+				for (Map config : configs) {
+				
+					host=(String) config.get("forestName");
+              break;
+        }
+       
+      }
+       
+  }
+    return host;
+  }
+  
+/**TEST**/
+  return generateUniqueEmailAddress("Dev_BPS_AD", "Pankaj", "BC", context);
+	
+  
+  ]]></Source>
+</Rule>

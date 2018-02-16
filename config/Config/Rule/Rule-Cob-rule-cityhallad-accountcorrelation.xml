@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-CityHallAD-AccountCorrelation" type="Correlation">
+  <Signature returnType="Map">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="environment" type="Map">
+        <Description>
+          Arguments passed to the aggregation task.
+        </Description>
+      </Argument>
+      <Argument name="application">
+        <Description>
+          Application being aggregated.
+        </Description>
+      </Argument>
+      <Argument name="account">
+        <Description>
+          A sailpoint.object.ResourceObject returned from the
+          collector.
+        </Description>
+      </Argument>
+      <Argument name="link">
+        <Description>
+          Existing link to this account.
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="identityName">
+        <Description>
+          The name of an Identity object.
+        </Description>
+      </Argument>
+      <Argument name="identity">
+        <Description>
+          A fully resolved Identity object if the rule wants
+          to do its own queries to locate the identity.
+        </Description>
+      </Argument>
+      <Argument name="identityAttributeName">
+        <Description>
+          The name of the extended attribute that can be used
+          to locate an existing identity.
+        </Description>
+      </Argument>
+      <Argument name="identityAttributeValue">
+        <Description>
+          The value of the named extended attribute that can be used
+          to locate an existing identity. This attribute is used
+          together with the identityAttributeName argument.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[import java.util.ArrayList;  
+import java.util.Iterator;  
+import java.util.Map;  
+import java.util.HashMap;  
+  
+import sailpoint.object.Filter;  
+import sailpoint.object.QueryOptions;  
+import sailpoint.connector.Connector;  
+import sailpoint.object.Application;  
+import sailpoint.object.Identity;  
+import sailpoint.object.ResourceObject;  
+  
+import org.apache.log4j.Logger;  
+import org.apache.log4j.Level;  
+  
+Logger log = Logger.getLogger("sailpoint.services.bshdemo.correlationRule");  
+// TODO: Remove this forced log level set before checking in this Rule.  
+log.setLevel(Level.DEBUG);  
+  
+/** 
+* A convenience function that tells IdentityIQ to ignore workgroup indexes 
+* in queries issued against the backing relational database.  This can be 
+* a performance boost for installations on relational engines with poor 
+* index performance for bit-wise/boolean data columns like used on 
+* "spt_identity.workgroup" 
+*/  
+public QueryOptions setIgnoreWorkgroupIndexes (QueryOptions qo) {  
+   ArrayList trueAndFalse = new ArrayList();  
+   trueAndFalse.add(new java.lang.Boolean(true));  
+   trueAndFalse.add(new java.lang.Boolean(false));  
+   qo.addFilter(Filter.in("workgroup", trueAndFalse));  
+   return qo;  
+}  
+  
+String acctName = account.getIdentity();  
+String appName = application.getName();  
+  
+HashMap returnMap = new HashMap();  
+  
+log.warn("Entering CorrelationRule for [" + acctName + "]");  
+  
+// Correlation strategy:  
+// 1 - Try to match an account to an Identity by email address.  
+// 2 - Try to match an account 'login' to an Identity by the Identity's "userId" extended attribute.  
+// 3 - Try to match an account 'login' to an Identity by the Identity's "name" core attribute.  
+// 4 - Give up, log a warning and let IdentityIQ create a stub Identity to correlate to.  
+  
+// Define pairs of attributes to model correlation priority sequence.  
+ArrayList correlationProperites = new ArrayList();  
+  
+// First try to correlate by account's "email" to Identity "email" attribute.  
+correlationProperites.add("cn,name");  
+  
+// Second try to correlate by account's "login" to Identity "userId" attribute.  
+correlationProperites.add("cn,employeeId");  
+  
+// Third try to correlate by account's "login" to Identity "name" attribute.  
+correlationProperites.add("cn,sAMAccountName");  
+  
+// If IdentityIQ already has a Link modeled for this account then it will pass  
+// the Link object into this rule as "link".  This can be used to identify  
+// circumstances where the Correlation Rule is going to change which Identity  
+// object this account currently correlates to.  
+// The messages logged here are expensive in terms of performance; the  
+// link.getIdentity() loads a full Identity cube into memory and should be  
+// avoided unless explicitly required.  This block of code guards that slow  
+// operation with a isTraceEnabled() call to only run the code if the user  
+// turns on trace-level debugging for the correlation rule.  
+if  (void != link && null != link)  {  
+  
+   String linkName = link.getNativeIdentity();  
+   String oldIdName = link.getIdentity().getName();  
+  
+   log.warn("Account [" + linkName + "] previusly correlated to [" + oldIdName + "]");  
+  
+}  
+  
+// Attempt to correlate to Identity objects in priority order.  
+for (String propertyPair : correlationProperites) {  
+  
+   List propertyNames = sailpoint.tools.Util.stringToList(propertyPair);  
+   String accountProperty = (String) propertyNames.get(0);  
+   String identityProperty = (String) propertyNames.get(1);  
+  
+   String acctPropertyValue = account.getStringAttribute(accountProperty);  
+  
+  
+   if ( (null == acctPropertyValue) || (0 == acctPropertyValue.length()) ) {  
+  
+      log.warn("Account [" + acctName +  "] has no value populated " +  
+                "for correlation property:[" + accountProperty + "]");  
+    
+      // Use 'continune' keyword to short circuit the back to the for() loop  
+      // above for the next propertyPair to evaluate.    
+      continue;  
+            
+   }  
+  
+   // We have a valid acctPropertyValue to try and match an Identity against.  
+   QueryOptions qo = new QueryOptions();  
+   setIgnoreWorkgroupIndexes(qo); // Performance optimization.  
+   qo.addFilter(Filter.eq(identityProperty, acctPropertyValue));  
+  
+   // Use a projection query first to return minimal data.  
+   ArrayList returnCols = new ArrayList();  
+   returnCols.add("id");  
+   returnCols.add("name");  
+  
+   String identityId = null;  
+   String identityName = null;  
+   int matchCount = 0;  
+  
+   // Execute the query against the IdentityIQ database.  
+   Iterator it = context.search(Identity.class, qo, returnCols);  
+   while (it.hasNext()) {  
+      Object [] retObjs = (Object []) it.next();  
+      identityId   = (String) retObjs[0];  
+      identityName = (String) retObjs[1];    
+      log.debug("Matched property [" + accountProperty + "] of [" +  
+                acctPropertyValue + "] to identity [" + identityName + "]");  
+      matchCount++;    
+   }  
+   sailpoint.tools.Util.flushIterator(it);  
+  
+   // Inform the log file in the event of a multi/non-deterministic match.  
+   if (1 < matchCount) {  
+      log.warn("Multiple Identity objects matched property [" +  
+                accountProperty + "] of [" + acctPropertyValue + "]");  
+   }  
+  
+   if (1 == matchCount) {  
+  
+      // We matched exactly 1 and only 1 Identity.  Verify that it is not  
+      // a workgroup and if it is not then this is an affirmative correlation.  
+      Identity identity = context.getObjectById(Identity.class, identityId);  
+    
+      if (identity.isWorkgroup()) {  
+         log.warn("Account " + acctName + " correlated to Workgroup " +  
+                  identityName + ", skipping workgroup match.");  
+      } else {  
+    
+         // We have a definite non-workgroup, single Identity object  
+         // correlation. Return this Identity back to the Aggregator.  
+         log.warn("Account [" + acctName + "] correlating to Identity [" +  
+                   identity.getName() + "] by match on [" + accountProperty + "]");  
+                 
+         returnMap.put("identity", identity);  
+         return returnMap;                    
+    
+      }  
+    
+   } // end if matchCount == 1.  
+  
+   // Log the circumstances when no match was found for debugging purposes.  
+   if (0 == matchCount) {  
+      log.warn("Account [" + acctName + "] found no match for [" +  
+                accountProperty + "] of [" + acctPropertyValue +  
+                "] in Identity property [" + identityProperty + "]");  
+   }       
+  
+} // end iterating through all the properties to match against.  
+  
+log.warn("Account " + appName + ":" + acctName + " does not correlate to an Identity.");  
+  
+return returnMap;]]></Source>
+</Rule>

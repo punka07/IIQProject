@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-Form-PSFIN-RequestAccess-Confirmation">
+  <Attributes>
+    <Map>
+      <entry key="pageTitle" value="PeopleSoft Financials Account/Access Confirmation Form"/>
+    </Map>
+  </Attributes>
+  <Section label="User Details" name="User Details">
+  <Attributes>
+      <Map>
+        <entry key="hidden">
+          <value>
+            <Script>
+              <Source><![CDATA[
+
+
+if (hasFinAcct) {
+
+return true;
+
+} else {
+
+return false;
+
+}
+
+]]></Source>
+            </Script>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Field displayName="User ID" name="UserID" readOnly="true" type="string"/>
+    <Field displayName="Full Name" name="UserDescription" readOnly="true" type="string"/>
+    <Field displayName="Primary Email Address" name="PrimaryEmailAddress" readOnly="true" type="string"/>
+    <Field displayName="WorkList User?" name="WorkListUser" readOnly="true" type="boolean"/>
+    <Field displayName="Email User?" name="EmailUser" readOnly="true" type="boolean"/>
+  </Section>
+  <Section label="Selected Role(s)" name="Selected Role(s)">
+    <Field displayName="Roles" multi="true" name="roleNames" readOnly="true" type="ManagedAttribute"/>
+  </Section>
+  <Button action="next" label="Submit"/>
+  <Button action="back" label="Back"/>
+  <Button action="cancel" label="Cancel"/>
+</Form>

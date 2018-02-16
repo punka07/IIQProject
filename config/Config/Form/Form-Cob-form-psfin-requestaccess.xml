@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-Form-PSFIN-RequestAccess">
+  <Attributes>
+    <Map>
+      <entry key="pageTitle" value="PeopleSoft Financials Account/Access Form"/>
+    </Map>
+  </Attributes>
+  <Section label="User Details" name="User Details">
+    <Attributes>
+      <Map>
+        <entry key="hidden">
+          <value>
+            <Script>
+              <Source><![CDATA[
+
+
+if (hasFinAcct) {
+
+return true;
+
+} else {
+
+return false;
+
+}
+
+]]></Source>
+            </Script>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Field displayName="User ID" name="UserID" readOnly="true" required="true" type="string">
+      <Script>
+        <Source><![CDATA[
+               import sailpoint.object.Identity;
+                            
+          				    String userID="";
+                            Identity identity = context.getObjectById(Identity.class,requestee);
+                            log.warn("identity:"+identity);
+                            userID = identity.getName();
+                            log.warn("userID::"+userID);
+                            
+                            return userID;
+                          
+                          ]]></Source>
+      </Script>
+    </Field>
+    <Field displayName="Full Name" name="UserDescription" readOnly="true" required="true" type="string">
+      <Script>
+        <Source><![CDATA[
+          import sailpoint.object.Identity;
+          
+           Identity identity = context.getObjectById(Identity.class,requestee);
+                
+          return identity.getDisplayName();
+        ]]></Source>
+      </Script>
+    </Field>
+    <Field displayName="Primary Email Address" name="PrimaryEmailAddress" readOnly="true" type="string">
+      <Script>
+        <Source><![CDATA[
+                            import sailpoint.object.Identity;
+                
+          									String email="";
+          									Identity identity = context.getObjectById(Identity.class,requestee);
+                            email = identity.getEmail();
+                            
+                            return email;
+                          
+                          ]]></Source>
+      </Script>
+    </Field>
+    <Field defaultValue="true" displayName="WorkList User?" name="WorkListUser" type="boolean"/>
+    <Field defaultValue="true" displayName="Email User?" name="EmailUser" type="boolean"/>
+  </Section>
+  <Section label="Select Role(s)" name="Select Role(s)">
+    <Field displayName="Roles" helpKey="The PeopleSoft Financials Role you'd like to request" multi="true" name="roleNames" type="ManagedAttribute">
+      <Script>
+        <Source><![CDATA[
+  import sailpoint.object.Filter; 
+
+                StringBuffer filterString = new StringBuffer();
+                filterString.append("application.name==\"Dev_PeopleSoftFinancials\" && attribute==\"roleNames\"");
+                field.setFilterString(filterString.toString());
+  ]]></Source>
+      </Script>
+    </Field>
+  </Section>
+  <Button action="back" label="Back"/>
+  <Button action="next" label="Next"/>
+  <Button action="cancel" label="Cancel"/>
+</Form>

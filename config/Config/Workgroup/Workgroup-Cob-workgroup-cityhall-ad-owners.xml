@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Identity PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Identity name="COB-Workgroup-CityHall-AD-Owners" workgroup="true">
+  <Attributes>
+    <Map>
+      <entry key="displayName" value="COB-Workgroup-CityHall-AD-Owners"/>
+    </Map>
+  </Attributes>
+  <Description>Workgroup for CityHall AD owners</Description>
+  <Owner>
+    <Reference class="sailpoint.object.Identity" name="114402"/>
+  </Owner>
+  <Preferences>
+    <Map>
+      <entry key="workgroupNotificationOption">
+        <value>
+          <WorkgroupNotifationOption>Both</WorkgroupNotifationOption>
+        </value>
+      </entry>
+    </Map>
+  </Preferences>
+</Identity>

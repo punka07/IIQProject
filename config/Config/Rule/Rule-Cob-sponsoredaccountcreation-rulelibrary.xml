@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-SponsoredAccountCreation-RuleLibrary">
+  <Source><![CDATA[
+  import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TimeZone;
+
+import javax.naming.CompoundName;
+import javax.naming.Context;
+import javax.naming.InvalidNameException;
+import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
+import javax.naming.directory.BasicAttribute;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.InitialDirContext;
+import javax.naming.directory.ModificationItem;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
+
+import sailpoint.api.PasswordGenerator;
+import sailpoint.api.SailPointContext;
+import sailpoint.object.Application;
+import sailpoint.object.Custom;
+import sailpoint.object.Filter;
+import sailpoint.object.Filter.MatchMode;
+import sailpoint.object.Identity;
+import sailpoint.object.PasswordPolicy;
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.AccountRequest;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import sailpoint.object.QueryOptions;
+import sailpoint.tools.GeneralException;
+import sailpoint.tools.Util;
+	public static Hashtable getLdapEnvironment(String applicationName, SailPointContext context) throws GeneralException {
+		Application app = context.getObjectByName(Application.class, applicationName);
+    log.warn("app:"+app);
+		String bindDN = app.getAttributes().get("domainSettings").getString("user");
+		String pword = app.getAttributes().get("domainSettings").getString("password");
+		String host = app.getAttributes().get("domainSettings").getString("host");
+		String port = app.getAttributes().get("domainSettings").getString("port");
+		Hashtable ldapEnv = new Hashtable();
+		ldapEnv.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+		ldapEnv.put(Context.PROVIDER_URL, "ldap://" + host + ":" + port);
+		ldapEnv.put(Context.SECURITY_AUTHENTICATION, "simple");
+		ldapEnv.put(Context.SECURITY_PRINCIPAL, bindDN);
+		ldapEnv.put(Context.SECURITY_CREDENTIALS, context.decrypt(pword));
+		//
+		return ldapEnv;
+	}
+
+  Hashtable result =getLdapEnvironment("ROFID",context);
+  return result;
+  ]]></Source>
+</Rule>

@@ -1,0 +1,1162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" libraries="Identity,LCM,IdentityRequest" name="COB-Workflow-Create-Contractor-Account">
+  <Variable initializer="true" name="transient">
+    <Description>Set to false to cause workflow-related objects, such as approval
+        work items, to be saved in the database even if they are only
+        viewed by the person registering.</Description>
+  </Variable>
+  <Variable initializer="identityModel" name="basePath">
+    <Description>The formpath to the link we are interested in editing.</Description>
+  </Variable>
+  <Variable name="launcher"/>
+  <Variable name="identityModel"/>
+  <Variable initializer="ref:launcher" name="identityName"/>
+  <Variable name="groupPlan"/>
+  <Variable name="groupProject"/>
+  <Variable name="identityRequestId"/>
+  <Variable name="identityRequest"/>
+  <Variable initializer="true" name="trace"/>
+  <Variable name="approvalSet" output="true">
+    <Description>This attribute is set during the "BuildApprovalSet" step,
+       which builds this list by going through the ProvisioningPlan
+       to build the line items that need to be approved.
+
+       This variable includes all ApprovalItems that are part of
+       the request process and is updated during the AfterScript
+       of the approval process by assimilating the decisions
+       and comments from the Approvals copy of the ApprovalItem.</Description>
+  </Variable>
+  <Variable name="launcherManager">
+    <Script>
+      <Source><![CDATA[
+      import sailpoint.object.Identity;
+
+		
+		Identity ident = context.getObject(Identity.class, launcher);
+      
+ 
+		if (ident != null) {
+			Identity manager =ident.getManager();
+      if(manager != null){
+      return manager.getName();
+      
+			}
+			
+			}
+      ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="requesterEmail">
+    <Script>
+      <Source><![CDATA[
+      import sailpoint.object.Identity;
+
+		String launcher =context.getUserName();
+		Identity ident = context.getObject(Identity.class, launcher);
+ 
+		if (ident != null) {
+			String email = (String) ident.getAttribute("email");
+			if (email != null) {
+				return email;
+			}
+			
+			}
+      ]]></Source>
+    </Script>
+  </Variable>
+  <Variable editable="true" name="defaultSecurityMessage"/>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="Approval Library"/>
+    <Reference class="sailpoint.object.Rule" name="LCM Workflow Library"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start" posX="12" resultVariable="workflowLogPrefix">
+    <Script>
+      <Source><![CDATA[
+            import sailpoint.object.Application;
+            import sailpoint.tools.Util;
+
+      	String workflowLogPrefix = workflow.getName() + "::requestedBy::" + launcher + "::"; 
+		
+		return workflowLogPrefix;
+	]]></Source>
+    </Script>
+    <Transition to="Build Identity Model"/>
+  </Step>
+  <Step action="call:getIdentityModel" icon="Task" name="Build Identity Model" posX="146" resultVariable="identityModel">
+    <Arg name="identityId">
+      <Script>
+        <Source><![CDATA[
+				return null;
+		  ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="identityName"/>
+    <Description>
+         For now, build a map of the data. Eventually this will use the Identity
+         transformer to build a Map based on an existing identityName, or 
+         Identity object.
+      </Description>
+    <Transition to="Create Contractor Form"/>
+  </Step>
+  <Step name="Create Contractor Form" posX="267">
+    <Approval name="COB - Create Contractor Form Approval" owner="ref:launcher" return="identityModel">
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+      <Arg name="workItemForm" value="COB-Form-Create-Contractor"/>
+    </Approval>
+    <Transition to="Contractor Confirmation Form"/>
+  </Step>
+  <Step name="Contractor Confirmation Form" posX="378" posY="28">
+    <Approval name="COB - Create Contractor Confirmation Form" owner="ref:launcher" return="identityModel" send="identityModel">
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+      <Arg name="workItemForm" value="COB-Form-Create-Contractor-Confirmation"/>
+    </Approval>
+    <Transition to="Create Contractor Form" when="!approved"/>
+    <Transition to="CreateContractorIdentity" when="approved"/>
+    <Transition to="end"/>
+  </Step>
+  <Step name="CreateContractorIdentity" posX="522" resultVariable="id">
+    <Script>
+      <Source><![CDATA[
+import java.util.List;
+import java.util.Map;
+
+import com.cob.helper.ADAccountHelper;
+
+import sailpoint.object.Custom;
+import sailpoint.object.Identity;
+		/**
+		* First, create an Identity cube in IIQ to represent the contractor's identity.
+		*
+		* We set the name as the sAMAccountName since an HR employeeId is not available.
+		*
+		*/
+
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+
+		String firstName = (String) identityModel.get("firstName");
+		String middleName = (String) identityModel.get("middleName");
+		String lastName = (String) identityModel.get("lastName");
+
+		if (Util.isNotNullOrEmpty(middleName)) {
+			identityModel.put("middleName", middleName);
+		}
+
+		cobLog(logPrefix, "EnterStep");
+		StringBuilder tempSAMAccountName = new StringBuilder();
+		List sAMAccountNames = com.cob.custom.tools.CobUtils.generateSAMAccountNames(firstName, lastName);
+		if (sAMAccountNames.size() > 0) {
+			tempSAMAccountName.append(sAMAccountNames.iterator().next());
+		}
+		tempSAMAccountName.append("==").append(java.util.UUID.randomUUID());
+
+		ADAccountHelper helper = new ADAccountHelper();
+		String displayName = helper.makeUniqueDisplayName(firstName, middleName, lastName, context);
+		workflow.put("displayName", displayName);
+		//
+		String mail = null;
+		String cobEmailRequired = (String) identityModel.get("cobEmailRequired");
+		if ("No".equalsIgnoreCase(cobEmailRequired)) {
+			mail = (String) identityModel.get("contractorCompanyEmail");
+		} else {
+			mail = displayName.replaceAll(" ", "_") + "@cob.com";
+		}
+
+		// save as a workflow variable for use in email templates
+		workflow.put("mail", mail);
+		identityModel.put("mail", mail);
+
+		String managerNetworkID = (String) identityModel.get("managerNetworkID");
+		Identity manager = context.getObject(Identity.class, managerNetworkID);
+		identityModel.put("managerDisplayName", manager.getDisplayName());
+
+		Custom cobCustomConfigCommonRule = context.getObjectByName(Custom.class, "COB-Custom-Config-Common");
+		String defaultPasswordInCaseFailure = (String) cobCustomConfigCommonRule.get("defaultPasswordInCaseFailure");
+
+		/*****
+		* Changes to approval based on cobTech contractor logic is
+		* added below - PB
+		*****/
+		if (identityModel.get("cobTechContractor").equals("Yes")) {
+			wfcontext.setVariable("isGapTechContractor", true);
+		} else {
+			wfcontext.setVariable("isGapTechContractor", false);
+		}
+
+		// random generation password policy
+
+		String password = null;
+		try {
+			password = getPasswordFor_S_Account();
+		} catch (Exception e) {
+			cobLog(logPrefix, "Exception while generating the password" + e.getMessage());
+		}
+		if (password != null) {
+			identityModel.put("password", password);
+			identityModel.put("defaultPassword", password);
+		} else {
+			identityModel.put("password", defaultPasswordInCaseFailure);
+			identityModel.put("defaultPassword", defaultPasswordInCaseFailure);
+		}
+
+		Identity newContractor = new Identity();
+		newContractor.setName(tempSAMAccountName.toString());
+		newContractor.setAttribute("firstname", firstName);
+		newContractor.setAttribute("lastname", lastName);
+		newContractor.setAttribute("displayName", displayName);
+		newContractor.setAttribute("email", mail);
+		newContractor.setManager(manager);
+		newContractor.setPassword("password");
+		context.saveObject(newContractor);
+		context.commitTransaction();
+		cobLog(logPrefix, "ExitStep");
+		//
+		return newContractor;
+
+	]]></Source>
+    </Script>
+    <Transition to="AD_Provision_Plan"/>
+  </Step>
+  <Step icon="Message" name="AD_Provision_Plan" posX="646" resultVariable="plan">
+    <Arg name="id" value="ref:id"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="identityModel" value="ref:identityModel"/>
+    <Arg name="mail" value="ref:mail"/>
+    <Arg name="displayName" value="ref:displayName"/>
+    <Script>
+      <Source><![CDATA[
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import com.cob.helper.ADAccountHelper;
+
+import sailpoint.object.Identity;
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.AccountRequest;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import sailpoint.tools.GeneralException;
+import sailpoint.tools.Util;
+
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+		String firstName = (String) identityModel.get("firstName");
+		String middleName = (String) identityModel.get("middleName");
+		String lastName = (String) identityModel.get("lastName");
+		String locationSelection = (String) identityModel.get("locationSelection");
+		String locationCode = (String) identityModel.get("locationCode");
+		String locationDesc = (String) identityModel.get("locationDesc");
+		String otherLocation = (String) identityModel.get("otherLocation");
+		String country = (String) identityModel.get("c");
+		String otherCountry = (String) identityModel.get("otherCountry");
+		String company = (String) identityModel.get("company");
+		String otherCompany = (String) identityModel.get("otherCompany");
+		String cobEmailRequired = (String) identityModel.get("cobEmailRequired");
+		String defaultPassword = (String) identityModel.get("defaultPassword");
+		Date contractEndDate = (Date) identityModel.get("contractEndDate");
+		String telephoneNumber = (String) identityModel.get("telephoneNumber");
+		String cobTelephoneExtensionNumber = (String) identityModel.get("cobTelephoneExtensionNumber");
+		String cobPhysicalLocation = (String) identityModel.get("cobPhysicalLocation");
+		String managerNetworkID = (String) identityModel.get("managerNetworkID");
+		String rcnDepartmentNumber = (String) identityModel.get("rcnDepartmentNumber");
+		String managerDeptName = (String) identityModel.get("managerDeptName");
+
+		// Generate DN
+		StringBuilder sbCn = new StringBuilder(firstName);
+		sbCn.append(" ");
+		if (Util.isNotNullOrEmpty(middleName)) {
+			sbCn.append(middleName).append(" ");
+		}
+		sbCn.append(lastName);
+		//		String[] generatedCNs = com.cob.custom.tools.GapUtils.getArrayOfCommonNames(java.util.Arrays.asList(new String[] { sbCn.toString() }),
+		//				lastName);
+
+		String baseDN = "OU=Users,OU=Contractors,DC=cobinc,DC=cob,DC=dev";
+		ADAccountHelper adHelper = new ADAccountHelper();
+		String dn = adHelper.makeUniqueDN(baseDN, java.util.Arrays.asList(new String[] { sbCn.toString() }), lastName, context);
+		//String dn = cobCheckCommonName(generatedCNs, baseDN);
+		wfcontext.setVariable("baseDN", baseDN);
+
+		String cn = dn;
+		cn = cn.substring(cn.indexOf("CN=") + 3, cn.indexOf(","));
+
+		wfcontext.setVariable("ADDN", dn);
+		wfcontext.setVariable("cn", cn);
+
+		if ("Other".equalsIgnoreCase(company)) {
+			company = otherCompany;
+		}
+
+		String location = locationCode;
+		if ("Location Code".equals(locationSelection) && "Other".equals(locationCode)
+				|| "Location Description".equals(locationSelection) && "Other".equals(locationDesc)) {
+			location = otherLocation;
+			locationDesc = otherLocation;
+		}
+
+		if ("Other".equals(country)) {
+			country = otherCountry;
+		}
+
+		Identity manager = context.getObject(Identity.class, managerNetworkID);
+
+		ProvisioningPlan plan = new ProvisioningPlan();
+
+		// create AD account
+		AccountRequest acctReqAD = new AccountRequest();
+		acctReqAD.setOperation(AccountRequest.Operation.Create);
+		acctReqAD.setApplication("Active_Directory");
+
+		acctReqAD.add(new AttributeRequest("pwdLastSet", ProvisioningPlan.Operation.Add, "true"));
+		acctReqAD.add(new AttributeRequest("password", ProvisioningPlan.Operation.Set, context.encrypt(defaultPassword)));
+		acctReqAD.add(new AttributeRequest("mail", ProvisioningPlan.Operation.Add, mail));
+		acctReqAD.add(new AttributeRequest("extensionAttribute4", ProvisioningPlan.Operation.Add, rcnDepartmentNumber));
+		acctReqAD.add(new AttributeRequest("extensionAttribute12", ProvisioningPlan.Operation.Add, "FolioUser"));
+		acctReqAD.add(new AttributeRequest("extensionAttribute14", ProvisioningPlan.Operation.Add, "15"));
+		acctReqAD.add(new AttributeRequest("extensionAttribute13", ProvisioningPlan.Operation.Add, location));
+		acctReqAD.add(new AttributeRequest("company", ProvisioningPlan.Operation.Add, company));
+		acctReqAD.add(new AttributeRequest("givenName", ProvisioningPlan.Operation.Add, firstName));
+		acctReqAD.add(new AttributeRequest("sn", ProvisioningPlan.Operation.Add, lastName));
+		acctReqAD.add(new AttributeRequest("title", ProvisioningPlan.Operation.Add, "Contractor"));
+		acctReqAD.add(new AttributeRequest("displayName", ProvisioningPlan.Operation.Add, displayName));
+		acctReqAD.add(new AttributeRequest("c", ProvisioningPlan.Operation.Add, country));
+		acctReqAD.add(new AttributeRequest("distinguishedName", ProvisioningPlan.Operation.Add, dn));
+		acctReqAD.add(new AttributeRequest("accountExpires", ProvisioningPlan.Operation.Add, getUTCformatFromDate(contractEndDate)));
+
+		// update physical delivery officename
+		String sPhysicalDeliveryOfficeName = rcnDepartmentNumber + " - " + locationDesc;
+		acctReqAD.add(new AttributeRequest("physicalDeliveryOfficeName", ProvisioningPlan.Operation.Add, sPhysicalDeliveryOfficeName));
+
+		if (managerDeptName != null) {
+			acctReqAD.add(new AttributeRequest("department", ProvisioningPlan.Operation.Add, managerDeptName));
+		}
+		if ("Yes".equalsIgnoreCase(cobEmailRequired)) {
+			acctReqAD.add(new AttributeRequest("extensionAttribute5", ProvisioningPlan.Operation.Add, "MBX=25GB;TYPE=EP2D;"));
+		}
+
+		if (manager != null) {
+			String managerDN = (String) manager.getAttribute("distinguishedName");
+			acctReqAD.add(new AttributeRequest("manager", ProvisioningPlan.Operation.Add, managerDN));
+		}
+
+		acctReqAD.add(new AttributeRequest("userAccountControl", ProvisioningPlan.Operation.Add, 512));
+		acctReqAD.setNativeIdentity(dn);
+
+		List lAccreqs = new ArrayList();
+		lAccreqs.add(acctReqAD);
+
+		// EDS Account provisioning plan
+		AccountRequest acctReqEDS = new AccountRequest();
+		acctReqEDS.setOperation(AccountRequest.Operation.Create);
+		acctReqEDS.setApplication("EDS");
+
+		List sObjectClass = new ArrayList();
+		sObjectClass.add("top");
+		sObjectClass.add("person");
+		sObjectClass.add("organizationalPerson");
+		sObjectClass.add("inetOrgPerson");
+		sObjectClass.add("cobPerson");
+
+		acctReqEDS.add(new AttributeRequest("objectClass", ProvisioningPlan.Operation.Add, sObjectClass));
+		acctReqEDS.add(new AttributeRequest("cn", ProvisioningPlan.Operation.Add, cn));
+		acctReqEDS.add(new AttributeRequest("c", ProvisioningPlan.Operation.Add, country));
+		acctReqEDS.add(new AttributeRequest("givenName", ProvisioningPlan.Operation.Add, firstName));
+		acctReqEDS.add(new AttributeRequest("sn", ProvisioningPlan.Operation.Add, lastName));
+		acctReqEDS.add(new AttributeRequest("displayName", ProvisioningPlan.Operation.Add, displayName));
+		acctReqEDS.add(new AttributeRequest("userPassword", ProvisioningPlan.Operation.Add, defaultPassword));
+		acctReqEDS.add(new AttributeRequest("mail", ProvisioningPlan.Operation.Add, mail));
+		acctReqEDS.add(new AttributeRequest("cobADdomain", ProvisioningPlan.Operation.Add, "COBINC"));
+		acctReqEDS.add(new AttributeRequest("cobSupervisorIdentifier", ProvisioningPlan.Operation.Add, manager.getName()));
+		acctReqEDS.add(new AttributeRequest("cobJobLocationCode", ProvisioningPlan.Operation.Add, location));
+		acctReqEDS.add(new AttributeRequest("cobJobLocationDescription", ProvisioningPlan.Operation.Add, locationDesc));
+		acctReqEDS.add(new AttributeRequest("departmentNumber", ProvisioningPlan.Operation.Add, rcnDepartmentNumber));
+		acctReqEDS.add(new AttributeRequest("cobOrgHierarchyLevel1Description", ProvisioningPlan.Operation.Add, company));
+		acctReqEDS.add(new AttributeRequest("title", ProvisioningPlan.Operation.Add, "Contractor"));
+		acctReqEDS.add(new AttributeRequest("cobBusRelTypeCode", ProvisioningPlan.Operation.Add, "C"));
+		if (telephoneNumber != null) {
+			acctReqEDS.add(new AttributeRequest("telephoneNumber", ProvisioningPlan.Operation.Add, telephoneNumber));
+		}
+		if (cobTelephoneExtensionNumber != null) {
+			acctReqEDS.add(new AttributeRequest("cobTelephoneExtensionNumber", ProvisioningPlan.Operation.Add, cobTelephoneExtensionNumber));
+		}
+		if (cobPhysicalLocation != null) {
+			acctReqEDS.add(new AttributeRequest("cobPhysicalLocation", ProvisioningPlan.Operation.Add, cobPhysicalLocation));
+		}
+		if (company != null) {
+			acctReqEDS.add(new AttributeRequest("cobCompanyName", ProvisioningPlan.Operation.Add, company));
+		}
+		if (managerDeptName != null) {
+			acctReqEDS.add(new AttributeRequest("cobDepartmentName", ProvisioningPlan.Operation.Add, managerDeptName));
+		}
+
+		acctReqEDS.add(new AttributeRequest("cobEmployeeStatusCode", ProvisioningPlan.Operation.Add, "A"));
+
+		String preferredLanguage = cob_getPreferredLanguage(country);
+		acctReqEDS.add(new AttributeRequest("preferredLanguage", ProvisioningPlan.Operation.Add, preferredLanguage));
+
+		DateFormat dfDateFormat3 = new SimpleDateFormat("yyyyMMddHHmmssZ");
+		String expiryDate = dfDateFormat3.format(contractEndDate);
+		acctReqEDS.add(new AttributeRequest("cobAccountExpires", ProvisioningPlan.Operation.Set, expiryDate));
+
+		lAccreqs.add(acctReqEDS);
+
+		plan.setAccountRequests(lAccreqs);
+		plan.setIdentity(id);
+
+		cobLog(logPrefix, "ExitStep");
+		//
+		return plan;
+
+		]]></Source>
+    </Script>
+    <Transition to="ProvisioningProject"/>
+  </Step>
+  <Step action="compileProvisioningProject" icon="Default" name="ProvisioningProject" posX="762" resultVariable="project">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Transition to="BuildApprovalSet"/>
+  </Step>
+  <Step action="call:buildApprovalSet" name="BuildApprovalSet" posX="877" resultVariable="approvalSet">
+    <Arg name="plan" value="ref:plan"/>
+    <Return name="approvalSet" to="approvalSet"/>
+    <Transition to="CreateIdentityRequest"/>
+  </Step>
+  <Step action="call:createIdentityRequest" icon="Task" name="CreateIdentityRequest" posX="1005" resultVariable="identityRequest">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="source">
+      <Script>
+        <Source><![CDATA[
+             return workflow.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="priority" value="ref:priority"/>
+    <Arg name="approvalSet" value="ref:approvalSet"/>
+    <Arg name="identityDisplayName">
+      <Script>
+        <Source><![CDATA[
+             return id.getDisplayName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="flow" value="LCM"/>
+    <Return name="identityRequestId" to="identityRequestId"/>
+    <Transition to="get Launcher Details"/>
+  </Step>
+  <Step name="get Launcher Details" posX="1122">
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="identityModel" value="ref:identityModel"/>
+    <Arg name="identityRequestId" value="ref:identityRequestId"/>
+    <Script>
+      <Source><![CDATA[
+	  	import java.util.*;
+		import sailpoint.object.EmailTemplate;
+		import sailpoint.object.EmailOptions;
+		import java.util.Map;
+		import java.util.HashMap;
+		import java.text.DateFormat;
+		import java.text.SimpleDateFormat;		
+		import sailpoint.object.*;
+		import sailpoint.server.Auditor;
+		
+		Identity launcherIdn = context.getObject(Identity.class, launcher);
+
+		if (launcherIdn != null) {
+			String email = (String) launcherIdn.getAttribute("email");
+			if (email != null) {
+				wfcontext.setVariable("launcherEmail", email);
+			}
+			Identity launcherManagerIdn = launcherIdn.getManager();
+			if (launcherManagerIdn != null) {
+				wfcontext.setVariable("launcherManager", launcherManagerIdn.getName());
+				identityModel.put("launcherManager", launcherManagerIdn.getName());
+				wfcontext.setVariable("launcherManagerDisplayName", launcherManagerIdn.getDisplayName());
+				identityModel.put("launcherManagerDisplayName", launcherManagerIdn.getDisplayName());
+			}
+		}
+
+		Map variables = new HashMap();
+		variables.put("firstName", identityModel.get("firstName"));
+		variables.put("lastName", identityModel.get("lastName"));
+		variables.put("identityModel", identityModel);
+		variables.put("identityRequestId", identityRequestId);
+		variables.put("launcherManagerDisplayName", identityModel.get("launcherManagerDisplayName"));
+		variables.put("requesterDisplayName", resolveDisplayName(launcher));
+	  ]]></Source>
+    </Script>
+    <Transition to="First Approval" when="isGapTechContractor"/>
+    <Transition to="Manager Approval" when="!isGapTechContractor"/>
+  </Step>
+  <Step icon="Approval" name="First Approval" posX="1238">
+    <Approval mode="serial" owner="ref:firstApproverName" return="requestRejected,identityModel" send="approvalSet,identityDisplayName,identityName,identityModel,requesterDisplayName">
+      <AfterScript>
+        <Source><![CDATA[
+          import sailpoint.workflow.IdentityRequestLibrary;
+          import sailpoint.object.*;
+					
+					 /**
+         * Adding first approval before
+         * the manager approval to prevent
+         * duplicate contractor account creation
+         *
+         */
+					
+   		  String approvalStatus = null;     
+   		  ApprovalSet set = approvalSet;
+   		  List items = approvalSet.getItems();
+		  String firstName=identityModel.get("firstName");
+		  String lastName=identityModel.get("lastName");
+		  List comments = new ArrayList();
+		  
+		  log.debug("Approver Comments :"+ requestRejected);
+		  
+		  if(identityModel.get("firstApproverComments")!=null){
+		  	Comment cmt = new Comment(identityModel.get("firstApproverComments").toString(),firstApproverName);
+		  	comments.add(cmt);
+		  }
+		  if(approval.getCompletionState().toString().equals("Finished")){
+        		if(requestRejected != null && requestRejected.equals("true")){
+            		approvalStatus = "REJECTED";
+					for(ApprovalItem item : items){
+						item.setComments(comments);
+						item.reject();
+					}
+            	}else{
+            		approvalStatus = "APPROVED";
+					for(ApprovalItem item : items){
+						item.setComments(comments);
+						item.approve();
+					}
+        		}
+        	}	
+        	
+            IdentityRequestLibrary.assimilateWorkItemApprovalSetToIdentityRequest(wfcontext, approvalSet);
+            auditDecisions(item);
+ 
+  /**
+	  * We are not sending the first approval status email to the requester
+	  */
+            
+          
+
+ if(approval.getCompletionState().toString().equals("Finished")){
+        		if(requestRejected != null && requestRejected.equals("true")){
+
+            String email = wfcontext.getVariable("launcherEmail");
+
+			Map variables = new HashMap();
+			variables.put("firstName", firstName);
+			variables.put("lastName", lastName);
+			variables.put("status", approvalStatus);
+			variables.put("requesterDisplayName", requesterDisplayName);
+		//	variables.put("launcherManagerDisplayName", identityModel.get("launcherManagerDisplayName"));
+                        variables.put("firstApproverName", firstApproverName);
+			if(identityModel.get("firstApproverComments")!=null){
+				variables.put("firstApproverComments",identityModel.get("firstApproverComments").toString());
+			}	
+		
+			EmailOptions options = new EmailOptions();
+			options.setVariables(variables);
+			options.setNoRetry(false);
+			options.setSendImmediate(true);
+			options.setTo(email);			
+
+			String emailTemplateName ="COB-EmailTemplate-ContractorRequest-FirstApprovalStatus";
+			sendLanguageSpecificEmail(emailTemplateName,variables,launcher);
+			}
+			}
+        ]]></Source>
+      </AfterScript>
+      <Arg name="workItemType" value="Approval"/>
+      <Arg name="workItemIdentityRequestId" value="ref:identityRequestId"/>
+      <Arg name="workItemElectronicSignature" value="ref:managerElectronicSignature"/>
+      <Arg name="workItemRequester" value="$(launcher)"/>
+      <Arg name="workItemDescription">
+        <Script>
+          <Source><![CDATA[
+        	String value="Contractor Admin Approval - new contractor creation request :";
+        	value= value + identityModel.get("firstName")+" "+ identityModel.get("lastName");
+            return value;
+          ]]></Source>
+        </Script>
+      </Arg>
+      <Arg name="workItemNotificationTemplate" value="COB-EmailTemplate-ContractorCreation-First-Approval"/>
+      <Arg name="workItemTargetClass" value="sailpoint.object.Identity"/>
+      <Arg name="workItemTargetName">
+        <Script>
+          <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+        </Script>
+      </Arg>
+      <Arg name="workItemPriority" value="ref:priority"/>
+      <Arg name="workItemForm" value="COB-Form-Create-Contractor-First-Approval-Form"/>
+      <Arg name="requesterEmail" value="ref:requesterEmail"/>
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+    </Approval>
+    <Arg name="firstApproverName" value="ref:firstApproverName"/>
+    <Arg name="requesterDisplayName" value="ref:requesterDisplayName"/>
+    <Description>
+      This approval step adds first layer of approval to prevent duplicate creator account creation.
+    </Description>
+    <Transition to="Clean up contractorID if request rejected" when="return requestRejected;"/>
+    <Transition to="Manager Approval"/>
+  </Step>
+  <Step icon="Approval" name="Manager Approval" posX="1311" posY="360">
+    <Approval mode="serial" owner="ref:launcherManager" return="requestRejected,identityModel" send="approvalSet,identityDisplayName,identityName,identityModel,requesterDisplayName">
+      <AfterScript>
+        <Source><![CDATA[
+          import sailpoint.workflow.IdentityRequestLibrary;
+          import sailpoint.object.*;
+   		  String approvalStatus = null;     
+   		  ApprovalSet set = approvalSet;
+   		  List items = approvalSet.getItems();
+		  String firstName=identityModel.get("firstName");
+		  String lastName=identityModel.get("lastName");
+		  List comments = new ArrayList();
+		  
+		  log.debug("Approver Comments :"+ requestRejected);
+		  
+		  if(identityModel.get("approverComments")!=null){
+		  	Comment cmt = new Comment(identityModel.get("approverComments").toString(),launcherManagerDisplayName);
+		  	comments.add(cmt);
+		  }
+		  if(approval.getCompletionState().toString().equals("Finished")){
+        		if(requestRejected != null && requestRejected.equals("true")){
+            		approvalStatus = "REJECTED";
+					for(ApprovalItem item : items){
+						item.setComments(comments);
+						item.reject();
+					}
+            	}else{
+            		approvalStatus = "APPROVED";
+					for(ApprovalItem item : items){
+						item.setComments(comments);
+						item.approve();
+					}
+        		}
+        	}	
+        	
+            IdentityRequestLibrary.assimilateWorkItemApprovalSetToIdentityRequest(wfcontext, approvalSet);
+            auditDecisions(item);
+            
+            String email = wfcontext.getVariable("launcherEmail");
+		            
+            EmailTemplate notifyRequestor = context.getObjectByName(EmailTemplate.class,"COB-EmailTemplate-ContractorRequest-ApprovalStatus");
+
+			Map variables = new HashMap();
+			variables.put("firstName", firstName);
+			variables.put("lastName", lastName);
+			variables.put("status", approvalStatus);
+			variables.put("requesterDisplayName", requesterDisplayName);
+			variables.put("launcherManagerDisplayName", identityModel.get("launcherManagerDisplayName"));
+			
+			if(identityModel.get("approverComments")!=null){
+				variables.put("approverComments",identityModel.get("approverComments").toString());
+			}	
+		
+			EmailOptions options = new EmailOptions();
+			options.setVariables(variables);
+			options.setNoRetry(false);
+			options.setSendImmediate(true);
+			options.setTo(email);			
+
+			String emailTemplateName ="COB-EmailTemplate-ContractorRequest-ApprovalStatus";
+			sendLanguageSpecificEmail(emailTemplateName,variables,launcher);
+        ]]></Source>
+      </AfterScript>
+      <Arg name="workItemIdentityRequestId" value="ref:identityRequestId"/>
+      <Arg name="workItemElectronicSignature" value="ref:managerElectronicSignature"/>
+      <Arg name="workItemRequester" value="$(launcher)"/>
+      <Arg name="workItemDescription">
+        <Script>
+          <Source><![CDATA[
+        	String value="Approval - new contractor creation request :";
+        	value= value + identityModel.get("firstName")+" "+ identityModel.get("lastName");
+            return value;
+          ]]></Source>
+        </Script>
+      </Arg>
+      <Arg name="workItemNotificationTemplate" value="COB-EmailTemplate-ContractorCreation-Approval"/>
+      <Arg name="workItemTargetClass" value="sailpoint.object.Identity"/>
+      <Arg name="workItemTargetName">
+        <Script>
+          <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+        </Script>
+      </Arg>
+      <Arg name="workItemType" value="Approval"/>
+      <Arg name="workItemPriority" value="ref:priority"/>
+      <Arg name="workItemForm" value="COB - Create Contractor Approval Form"/>
+      <Arg name="workItemFormBasePath" value="ref:basePath"/>
+    </Approval>
+    <Arg name="launcherManager" value="ref:launcherManager"/>
+    <Arg name="requesterEmail" value="ref:requesterEmail"/>
+    <Arg name="requesterDisplayName" value="ref:requesterDisplayName"/>
+    <Description>
+      If approvalScheme contains manager, send an approval for all
+      requested items in the request. This approval will get the entire
+      approvalSet as part of the workitem.
+    </Description>
+    <Transition to="Clean up contractorID if request rejected" when="return requestRejected;"/>
+    <Transition to="UpdateProvisioningPlan"/>
+  </Step>
+  <Step name="Clean up contractorID if request rejected" posX="1406" posY="188" wait="1">
+    <Script>
+      <Source><![CDATA[
+    		import sailpoint.object.*;
+    		import sailpoint.api.*;
+    		import sailpoint.tools.*;
+		    String sAMAccountName=identityModel.get("sAMAccountName"); 
+    		if(sAMAccountName!=null)
+    		{
+				Identity idn= context.getObjectByName(Identity.class,sAMAccountName);
+    			if(idn==null)
+					log.error(sAMAccountName + ": doesn't exist to remove");
+    			else
+    			{
+    				Terminator t = new Terminator(context);
+		    		t.deleteObject(idn);
+					log.debug(sAMAccountName + ": succesfully removed");
+    			}	
+    		
+    		}
+    ]]></Source>
+    </Script>
+    <Transition to="end"/>
+  </Step>
+  <Step name="UpdateProvisioningPlan" posX="1182" posY="342" resultVariable="updatedPlan" wait="1">
+    <Arg name="plan" value="ref:plan"/>
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+		AccountRequest acctReqAD = plan.getAccountRequests("Active_Directory").iterator().next();
+		cobLog(logPrefix, "acctReqAD=" + acctReqAD.toXml());
+		String cobEmailRequired = identityModel.get("cobEmailRequired");
+
+		String firstName = identityModel.get("firstName");
+		String lastName = identityModel.get("lastName");
+		String sAMAccountName = generateUniqueSAMAccountName(firstName, lastName, context);
+		wfcontext.setVariable("sAMAccountName", sAMAccountName);
+
+		String mailAddress = identityModel.get("mail");
+		List proxyAddresses = new ArrayList();
+		proxyAddresses.add(proxyAddress(mailAddress));
+               //add second proxy address
+       
+               proxyAddresses.add(createProxyAddress(sAMAccountName));
+
+		String targetAddress;
+		if ("Yes".equalsIgnoreCase(cobEmailRequired)) {
+			targetAddress = makeTargetAddress(sAMAccountName);
+		} else {
+			targetAddress = "SMTP:" + mailAddress;
+		}
+		acctReqAD.add(new AttributeRequest("extensionAttribute1", ProvisioningPlan.Operation.Add, sAMAccountName));
+		acctReqAD.add(new AttributeRequest("extensionAttribute2", ProvisioningPlan.Operation.Add, sAMAccountName));
+		acctReqAD.add(new AttributeRequest("sAMAccountName", ProvisioningPlan.Operation.Add, sAMAccountName));
+		acctReqAD.add(new AttributeRequest("mailNickName", ProvisioningPlan.Operation.Add, sAMAccountName));
+		acctReqAD.add(new AttributeRequest("ProxyAddresses", ProvisioningPlan.Operation.Add, proxyAddresses));
+		acctReqAD.add(new AttributeRequest("targetAddress", ProvisioningPlan.Operation.Add, targetAddress));
+		String userPrincipalName = sAMAccountName + "@" + getDCFromDN(baseDN);
+		if (userPrincipalName != null) {
+			acctReqAD.add(new AttributeRequest("userPrincipalName", ProvisioningPlan.Operation.Add, userPrincipalName));
+		}
+		//
+		List lAccreqs = new ArrayList();
+		lAccreqs.add(acctReqAD);
+		//
+		AccountRequest acctReqEDS = plan.getAccountRequests("EDS").iterator().next();
+		// Code to put stepup response
+		String sResponse = "0" + sAMAccountName;
+		if (lastName != null) {
+			if (lastName.length() > 1) {
+				sResponse = lastName.substring(0, 2) + sAMAccountName;
+			}
+		}
+
+		if (6 > sResponse.length()) {
+			for (int i = sResponse.length(); i <= 6; i++) {
+				sResponse = sResponse + "0";
+			}
+		}
+		wfcontext.setVariable("defaultSecurityMessage", sResponse);
+
+		acctReqEDS.add(new AttributeRequest("cobBasicStepUpChallenge", ProvisioningPlan.Operation.Add, "0"));
+		acctReqEDS.add(new AttributeRequest("cobBasicStepUpResponse", ProvisioningPlan.Operation.Add, sResponse));
+		acctReqEDS.add(new AttributeRequest("uid", ProvisioningPlan.Operation.Add, sAMAccountName));
+		acctReqEDS.add(new AttributeRequest("cobUniversalIdentifier", ProvisioningPlan.Operation.Add, sAMAccountName));
+		String edsIdentity = "uid=" + sAMAccountName + ",ou=users,dc=cob,dc=com";
+		acctReqEDS.setNativeIdentity(edsIdentity);
+		//
+		lAccreqs.add(acctReqEDS);
+
+		ProvisioningPlan updatedPlan = new ProvisioningPlan();
+
+		updatedPlan.setAccountRequests(lAccreqs);
+		//
+		cobLog(logPrefix, "ExitStep");
+		//
+		return updatedPlan;
+      ]]></Source>
+    </Script>
+    <Transition to="UpdateIdentity"/>
+  </Step>
+  <Step icon="Default" name="UpdateIdentity" posX="521" posY="196" resultVariable="id">
+    <Script>
+      <Source><![CDATA[
+import sailpoint.object.Identity;
+
+		String logPrefix = workflowLogPrefix + "::" + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep::sAMAccountName=" + sAMAccountName);
+		String tempSAMAccountName = id.getName();
+		Identity identity;
+		if (context.getObjectByName(Identity.class, tempSAMAccountName) == null) {
+			cobLog(logPrefix, tempSAMAccountName + " identity not found - creating a new one");
+			Identity newIdentity = new Identity();
+			newIdentity.setName(sAMAccountName);
+			newIdentity.setAttribute("firstname", id.getAttribute("firstname"));
+			newIdentity.setAttribute("lastname", id.getAttribute("lastname"));
+			newIdentity.setManager(id.getManager());
+			newIdentity.setPassword(id.getPassword());
+			context.saveObject(newIdentity);
+			identity = newIdentity;
+		} else {
+			cobLog(logPrefix, "found identity=" + tempSAMAccountName);
+			id.setName(sAMAccountName);
+			context.saveObject(id);
+			identity = id;
+		}
+		context.commitTransaction();
+		cobLog(logPrefix, "ExitStep");
+		//
+		return identity;
+      ]]></Source>
+    </Script>
+    <Transition to="CompileUpdatedProvisioningProject"/>
+  </Step>
+  <Step action="compileProvisioningProject" icon="Default" name="CompileUpdatedProvisioningProject" posX="779" posY="277" resultVariable="updatedProject">
+    <Arg name="project"/>
+    <Arg name="plan" value="ref:updatedPlan"/>
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Transition to="ProvisionProject"/>
+  </Step>
+  <Step action="call:provisionProject" icon="Provision" name="ProvisionProject" posX="258" posY="100">
+    <Arg name="project" value="ref:updatedProject"/>
+    <Arg name="background" value="false"/>
+    <Transition to="AuditProvision"/>
+  </Step>
+  <Step icon="Audit" name="AuditProvision" posX="425" posY="104">
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="project" value="ref:updatedProject"/>
+    <Arg name="source" value="ref:source"/>
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+
+		Identity idn = context.getObject(Identity.class, identityName);
+		cobProvisioningAuditLog(logPrefix, source, launcher, project, idn);
+
+		cobLog(logPrefix, "Exit Step");
+		]]></Source>
+    </Script>
+    <Transition to="Refresh Identity"/>
+  </Step>
+  <Step action="call:refreshIdentity" icon="Task" name="Refresh Identity" posX="1381" posY="102">
+    <Arg name="refreshLinks" value="true"/>
+    <Arg name="forceLinkAttributePromotion" value="true"/>
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="promoteAttributes" value="true"/>
+    <Description>
+      Add arguments as necessary to enable refresh features.  Typically you
+      only want this to correlate roles.  Don't ask for provisioning  since that
+      can result in provisioning policies that need to be presented and it's
+      too late for that.  This is only to get role detection and exception
+      entitlements in the cube.
+    </Description>
+    <Transition to="Complete Identity Request"/>
+  </Step>
+  <Step action="call:completeIdentityRequest" icon="Task" name="Complete Identity Request" posX="994" posY="107" resultVariable="identityRequest">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="identityRequestId" value="ref:identityRequestId"/>
+    <Arg name="approvalSet" value="ref:approvalSet"/>
+    <Arg name="autoVerify" value="true"/>
+    <Transition to="PS_Provision"/>
+  </Step>
+  <Step icon="Default" name="PS_Provision" posX="1232" posY="107">
+    <Arg name="disableIdentityRequests"/>
+    <Arg name="provisioningRetryThreshold"/>
+    <Arg name="maxRetries"/>
+    <Arg name="error"/>
+    <Arg name="identityRequestId"/>
+    <Arg name="trace"/>
+    <Arg name="transient"/>
+    <Arg name="retryProject"/>
+    <Arg name="LCMEvent" value="ref:LCMEvent"/>
+    <Arg name="foregroundProvisioning"/>
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="newMailId">
+      <Script>
+        <Source><![CDATA[
+               return identityModel.get("mail");
+        ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="source">
+      <Script>
+        <Source><![CDATA[
+             return workflow.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="sAMAccountName" value="ref:sAMAccountName"/>
+    <Arg name="action"/>
+    <Arg name="enableRetryRequest"/>
+    <Arg name="retries"/>
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="retryRequired"/>
+    <Arg name="retryInterval"/>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="cobProvision_PS_with_retries"/>
+    </WorkflowRef>
+    <Transition to="Send Notifications"/>
+  </Step>
+  <Step name="Send Notifications" posX="1130" posY="107">
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="requesterDisplayName" value="ref:requesterDisplayName"/>
+    <Arg name="requestor" value="ref:launcher"/>
+    <Script>
+      <Source><![CDATA[
+	  	import java.util.*;
+		import sailpoint.object.EmailTemplate;
+		import sailpoint.object.EmailOptions;
+		import java.util.Map;
+		import java.util.HashMap;
+		import java.text.DateFormat;
+		import java.text.SimpleDateFormat;		
+		import sailpoint.object.*;
+		import sailpoint.server.Auditor;
+
+		String logPrefix = workflow.getName() + "::" + identityName + "::" + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "StartStep");
+
+		String contractorsDomain = "COBINC";
+
+		//String contractorCompanyEmail = (String) identityModel.get("contractorCompanyEmail");
+		//if (contractorCompanyEmail != null) {
+		//	if ("No".equalsIgnoreCase((String) identityModel.get("cobEmailRequired"))) {
+		//		mail = contractorCompanyEmail;
+		//	}
+		//}
+
+		Identity user = context.getObject(Identity.class, identityName);
+
+		List emails = new ArrayList();
+		//
+		String managerNetworkID = (String) identityModel.get("managerNetworkID");
+		Identity manager = context.getObject(Identity.class, managerNetworkID);
+		if (manager != null) {
+			String managerEmail = (String) manager.getAttribute("email");
+			emails.add(managerEmail);
+		}
+
+		if (requestor != null) {
+			Identity requestorIdn = context.getObject(Identity.class, requestor);
+			if (requestorIdn != null) {
+				if (requestorIdn.getAttribute("email") != null) {
+					String requestorEmail = (String) requestorIdn.getAttribute("email");
+					if (requestorEmail != null) {
+						emails.add(requestorEmail);
+					}
+				}
+			}
+		}
+
+		Map variables = new HashMap();
+		variables.put("firstName", identityModel.get("firstName"));
+		variables.put("lastName", identityModel.get("lastName"));
+		variables.put("userName", contractorsDomain + "\\" + sAMAccountName);
+		variables.put("email", mail);
+		variables.put("endDate", identityModel.get("contractEndDate"));
+		variables.put("userPassword", identityModel.get("defaultPassword"));
+		variables.put("requesterDisplayName", requesterDisplayName);
+		variables.put("defaultSecurityMessage", wfcontext.getVariable("defaultSecurityMessage"));
+
+		boolean sendEmail = false;
+		if (Util.size(user.getLinks()) > 1) {
+			sendEmail = true;
+		}
+
+		if (sendEmail) {
+			String contractorInfoTemplate = "COB-EmailTemplate-ContractorInfo";
+			String passwordInfoTemplate = "COB-EmailTemplate-Contractor-ADPassword";
+
+			// send email to requestor
+			sendLanguageSpecificEmail(contractorInfoTemplate, variables, launcher);
+			sendLanguageSpecificEmail(passwordInfoTemplate, variables, launcher);
+
+			// send email to manager
+			sendLanguageSpecificEmail(contractorInfoTemplate, variables, managerNetworkID);
+			sendLanguageSpecificEmail(passwordInfoTemplate, variables, managerNetworkID);
+		}
+		cobLog(logPrefix, "EndStep");
+				
+	  ]]></Source>
+    </Script>
+    <Transition to="Build Group Plan"/>
+  </Step>
+  <Step name="Build Group Plan" posX="996" posY="215" resultVariable="groupPlan" wait="1">
+    <Arg name="id" value="ref:id"/>
+    <Script>
+      <Source><![CDATA[
+import sailpoint.object.ProvisioningPlan;
+		String logPrefix = workflow.getName() + "::" + identityName + "::" + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "StartStep");
+		//
+		String userAdDn = (String) wfcontext.getVariable("ADDN");
+		String managerNetworkID = (String) identityModel.get("managerNetworkID");
+		com.cob.workflow.MappedGroupsPlanBuilder builder = new com.cob.workflow.MappedGroupsPlanBuilder();
+		ProvisioningPlan groupPlan = builder.buildGroupPlan(id, userAdDn, managerNetworkID, context);
+		//
+		cobLog(logPrefix, "EndStep::groupPlan=" + groupPlan);
+		//
+		return groupPlan;
+		]]></Source>
+    </Script>
+    <Transition to="Group Provisioning Project" when="return groupPlan!=null;"/>
+  </Step>
+  <Step action="compileProvisioningProject" icon="Default" name="Group Provisioning Project" posX="1062" posY="347" resultVariable="groupProject">
+    <Arg name="project" value="ref:groupProject"/>
+    <Arg name="plan" value="ref:groupPlan"/>
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Transition to="Group Provision"/>
+  </Step>
+  <Step icon="Default" name="Group Provision" posX="912" posY="361">
+    <Arg name="disableIdentityRequests" value="true"/>
+    <Arg name="provisioningRetryThreshold"/>
+    <Arg name="maxRetries"/>
+    <Arg name="errorEmailTemplate"/>
+    <Arg name="isFailureEmailRequired"/>
+    <Arg name="identityRequestId"/>
+    <Arg name="trace"/>
+    <Arg name="disabledLinks"/>
+    <Arg name="retryProject"/>
+    <Arg name="emails"/>
+    <Arg name="enabledLinks"/>
+    <Arg name="retryAccountRequests"/>
+    <Arg name="requestor" value="ref:currentUserName"/>
+    <Arg name="foregroundProvisioning"/>
+    <Arg name="project" value="ref:groupProject"/>
+    <Arg name="errors"/>
+    <Arg name="source">
+      <Script>
+        <Source><![CDATA[
+             return workflow.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="enableRetryRequest"/>
+    <Arg name="retries"/>
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="callerLogPrefix"/>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="cobProvision_with_retries_Generic"/>
+    </WorkflowRef>
+    <Transition to="Refresh Identity for Group"/>
+  </Step>
+  <Step action="call:refreshIdentity" icon="Task" name="Refresh Identity for Group" posX="719" posY="394">
+    <Arg name="identityName">
+      <Script>
+        <Source><![CDATA[
+             return id.getName();
+          ]]></Source>
+      </Script>
+    </Arg>
+    <Arg name="promoteAttributes" value="true"/>
+    <Description>
+      Add arguments as necessary to enable refresh features.  Typically you
+      only want this to correlate roles.  Don't ask for provisioning  since that
+      can result in provisioning policies that need to be presented and it's
+      too late for that.  This is only to get role detection and exception
+      entitlements in the cube.
+    </Description>
+  </Step>
+  <Step icon="Stop" name="end" posX="402" posY="362">
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflow.getName() + "::" + identityName + "::"+ wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "End workflow");
+       ]]></Source>
+    </Script>
+  </Step>
+  <Step catches="complete" icon="Catches" name="HandleException" posX="37" posY="690">
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="project" value="ref:project"/>
+    <Arg name="trace" value="ref:trace"/>
+    <Arg name="approvalSet" value="ref:approvalSet"/>
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflow.getName() + "::" + identityName + "::"+ wfcontext.getStep().getName() + "::";
+	  System.out.println("logPrefix::"+logPrefix);
+	  ]]></Source>
+    </Script>
+  </Step>
+</Workflow>

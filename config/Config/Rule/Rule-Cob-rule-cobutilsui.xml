@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-cobUtilsUI">
+  <Source><![CDATA[
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import sailpoint.tools.Message;
+
+
+	public static String validateWhitespaces(String value) {
+		String error = null;
+		if (value != null) {
+			if (value.contains("  ")) {
+				error = "cob_cia_ui_errorMessage_field_has_repeated_white_spaces";
+			} else if (value.startsWith(" ")) {
+				error = "cob_cia_ui_errorMessage_field_has_leading_or_trailing_white_space";
+			} else if (value.endsWith(" ")) {
+				error = "cob_cia_ui_errorMessage_field_has_leading_or_trailing_white_space";
+			}
+		}
+		//
+		return error;
+	}
+
+	public static String validateFirstName(String value) {
+		String error = null;
+		if (value != null) {
+			error = validateWhitespaces(value);
+			if (error == null) {
+				if (value.length() > char64) {
+					error = "cob_cia_ui_errorMessage_longer_than_64_characters";
+				} else {
+					for (int i = 0; i < value.length(); i++) {
+						char ch = value.charAt(i);
+						if (!Character.isLetterOrDigit(ch) && ch != ' ') {
+							error = "cob_cia_ui_errorMessage_field_has_special_character";
+							break;
+						}
+					}
+				}
+			}
+		}
+		//
+		return error;
+	}
+
+	public static String validateLastName(String value) {
+		return validateFirstName(value);
+	}
+
+	
+
+
+
+	
+
+	
+
+
+
+	public static String validateDisplayName(String value) {
+		String error = null;
+		if (value != null) {
+			error = validateWhitespaces(value);
+			if (error == null) {
+				for (int i = 0; i < value.length(); i++) {
+					char ch = value.charAt(i);
+					if (!Character.isLetterOrDigit(ch) && ch != ' ') {
+						error = "cob_cia_ui_errorMessage_field_has_special_character";
+						break;
+					}
+				}
+			}
+		}
+		
+		return error;
+	}
+
+}
+
+  
+  ]]></Source>
+</Rule>

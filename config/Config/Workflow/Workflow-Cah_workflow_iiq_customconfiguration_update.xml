@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow handler="sailpoint.api.StandardWorkflowHandler" libraries="Identity,BatchRequest" name="CAH_Workflow_IIQ_CustomConfiguration_Update" taskType="LCM" type="LCMIdentity">
+  <Variable input="true" name="requester"/>
+  <Variable initializer="true" name="transient"/>
+  <Variable initializer="true" name="trace"/>
+  <Variable name="customObjName"/>
+  <Variable name="attribName"/>
+  <Variable name="attribValue"/>
+  <Variable name="newattribValue"/>
+  <Variable name="newAttribute"/>
+  <Variable initializer="false" name="aggregationStatus"/>
+  <Variable initializer="true" name="trace"/>
+  <Variable name="groupRefreshRule"/>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="Approval Library"/>
+    <Reference class="sailpoint.object.Rule" name="LCM Workflow Library"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start" posX="14" posY="12">
+    <Transition to="Show Custom Configuration"/>
+  </Step>
+  <Step name="Show Custom Configuration">
+    <Approval name="Select Custom Configuration to Update" owner="ref:requester" return="newattribValue,newAttribute,customObjName,attribName,attribValue" send="newattribValue,newAttribute,customObjName,attribName,attribValue">
+      <Arg name="workItemType" value="Approval"/>
+      <Arg name="workItemForm" value="string:Custom Configuration Update"/>
+    </Approval>
+    <Transition to="Update Custom Configuration"/>
+  </Step>
+  <Step name="Update Custom Configuration" resultVariable="status">
+    <Arg name="customObjName" value="ref:customObjName"/>
+    <Arg name="attribName" value="ref:attribName"/>
+    <Arg name="attribValue" value="ref:attribValue"/>
+    <Arg name="newattribName" value="ref:newAttribute"/>
+    <Arg name="newattribValue" value="ref:newattribValue"/>
+    <Script>
+      <Source><![CDATA[
+  								
+               				import sailpoint.object.Custom;
+        		
+        							private String status = "failed";
+        
+        							Custom cusObj = context.getObjectByName(Custom.class,customObjName);
+        							if(cusObj != null)
+        							{
+        											boolean updated = false;
+        										  if(attribName != null && attribValue != null)
+        											{
+        													cusObj.put(attribName,attribValue);
+        													updated = true;
+        											}
+        											if(newattribName != null && newattribValue != null)
+        											{
+        														cusObj.put(newattribName,newattribValue);
+        														updated = true;
+        											}
+        											if(updated)
+        											{
+                                    context.saveObject(cusObj);
+                                    context.commitTransaction();
+                                    status = "success";
+        											}
+        							}
+                      
+                			return status;
+               			    							
+  ]]></Source>
+    </Script>
+    <Transition to="Show Status Message"/>
+    <Transition to="end"/>
+  </Step>
+  <Step name="Show Status Message">
+    <Arg name="status" value="ref:status"/>
+    <Script>
+      <Source><![CDATA[
+        
+           	import sailpoint.tools.Message;
+            import javax.servlet.http.HttpSession;
+            import javax.faces.context.ExternalContext;
+            import javax.faces.context.FacesContext;
+						import sailpoint.web.WorkflowSessionWebUtil;
+						import sailpoint.api.WorkflowSession;
+			
+        		log.error("Entered in Show status Message");
+						Message msg = null;
+        		if(status.equalsIgnoreCase("success"))
+        		msg = new Message(Message.Type.Info,"Custom Object Successfully Updated",new Object[] { });
+        		else
+        		msg = new Message(Message.Type.Error,"Unable to Update Custom Object , Unknown error",new Object[] { });
+        		FacesContext fc= FacesContext.getCurrentInstance();
+						log.error("fc :"+fc);
+						HttpSession session = fc.getExternalContext().getSession(true);
+						WorkflowSessionWebUtil webUtil = new WorkflowSessionWebUtil(session );
+						log.error("webUtil :"+webUtil);
+						WorkflowSession wfsession = webUtil.getWorkflowSession();
+						log.error("wfsession :"+wfsession);
+						wfsession.addReturnMessage(msg);
+        
+     ]]></Source>
+    </Script>
+    <Transition to="end"/>
+  </Step>
+  <Step icon="Stop" name="end" posX="830" posY="225"/>
+</Workflow>

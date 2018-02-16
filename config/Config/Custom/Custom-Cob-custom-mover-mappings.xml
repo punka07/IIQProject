@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="COB-Custom-Mover-Mappings">
+  <Attributes>
+    <Map>
+      <entry key="Launch Manager Cert" value="false"/>
+      <entry key="Plan Construction Types">
+        <value>
+          <List>
+            <String>Dynamic Roles</String>
+            <String>Attribute Synch</String>
+            <String>Custom Rule</String>
+          </List>
+        </value>
+      </entry>
+      <entry key="Trigger Compare Links">
+        <value>
+          <List>
+            <String>Dev_PeopleSoftHCM</String>
+          </List>
+        </value>
+      </entry>
+      <entry key="Trigger Compare Links Schemas">
+        <value>
+          <Attributes>
+            <Map>
+              <entry key="Dev_PeopleSoftHCM">
+                <value>
+                  <List>
+                    <String>DEPTID</String>
+                    <String>LAST_NAME</String>
+                    <String>REPORTS_TO</String>
+                    <String>FIRST_NAME</String>
+                    <String>JOBCODE</String>
+                  </List>
+                </value>
+              </entry>
+            </Map>
+          </Attributes>
+        </value>
+      </entry>
+      <entry key="Trigger Field Selector">
+        <value>
+          <IdentitySelector>
+            <MatchExpression and="true">
+              <MatchTerm name="status" value="A"/>
+            </MatchExpression>
+          </IdentitySelector>
+        </value>
+      </entry>
+      <entry key="Trigger If No Other LCE Triggered" value="true"/>
+      <entry key="Trigger Type" value="Compare Links"/>
+    </Map>
+  </Attributes>
+</Custom>

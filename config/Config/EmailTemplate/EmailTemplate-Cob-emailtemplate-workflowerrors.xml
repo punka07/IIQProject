@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE EmailTemplate PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<EmailTemplate name="COB-EmailTemplate-WorkflowErrors">
+  <Body>
+&lt;html&gt;
+&lt;body&gt;
+&lt;p dir="ltr" style="line-height:1.656;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size:11pt;font-family:Arial;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"&gt;Hi,&lt;/span&gt;
+&lt;/p&gt;
+&lt;p dir="ltr" style="font-size: 12px; line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"&gt;
+&lt;b style="font-weight:normal;" &gt;
+&lt;br&gt;
+&lt;/b&gt;
+&lt;/p&gt;
+&lt;p dir="ltr" style="line-height:1.656;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size:11pt;font-family:Arial;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"&gt;Workflow $wfName has failed due to below errors:&lt;/span&gt;
+&lt;/p&gt;
+&lt;p dir="ltr" style="line-height:1.656;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size:11pt;font-family:Arial;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"&gt;$errorMsgs&lt;/span&gt;
+&lt;/p&gt;
+&lt;p dir="ltr" style="font-size: 12px; line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"&gt;
+&lt;b style="font-weight:normal;"&gt;
+&lt;br&gt;
+&lt;/b&gt;
+&lt;/p&gt;
+    &lt;img src="http://devcobiiq:8080/identityiq/ui/images/TopLogo1.png"/&gt;
+&lt;p dir="ltr" style="line-height:1.656;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size:11pt;font-family:Arial;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"&gt;Please Note: this is an auto-generated email, please do not reply to this email. Questions should be directed to the DoIT Service Desk via 617-635-7378 or &lt;/span&gt;
+&lt;span style="font-size:9pt;font-family:Arial;color:#333333;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"&gt;&amp;nbsp;&lt;/span&gt;
+&lt;span style="font-size:11pt;font-family:Arial;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"&gt;BPS Technology Help Desk &amp;nbsp;at 617-635-9200.&lt;/span&gt;
+&lt;/p&gt;
+&lt;p dir="ltr" style="font-size: 12px; line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"&gt;
+&lt;br&gt;
+&lt;/p&gt;
+&lt;p dir="ltr" style="line-height:1.656;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size:8pt;font-family:Calibri;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"&gt;The information contained in this communication, including any attachments, is intended solely for the use of the individual or entity to whom it is addressed and others authorized to receive it. It may contain confidential or legally privileged information. If you are not the intended recipient you are hereby notified that any disclosure, copying, distribution or taking any action in reliance on the contents of this information is strictly prohibited and may be unlawful. If you have received this communication in error, please notify us immediately by responding to this email and then delete it from your system. The sender is neither liable for the proper and complete transmission of the information contained in this communication nor for any delay in its receipt.&lt;/span&gt;
+&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</Body>
+  <Description>Error notification template</Description>
+  <Subject>NOTIFICATION: Error while executing workflow - $wfName</Subject>
+</EmailTemplate>

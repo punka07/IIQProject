@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE EmailTemplate PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<EmailTemplate cc="$requesterEmail" name="COB-EmailTemplate-SponsorAcctCreation-Manager-Approval">
+  <Body>
+&lt;html&gt;
+&lt;body&gt;
+
+
+&lt;span &gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Hello &lt;/span&gt;
+&lt;span style="color: rgb(0, 0, 0); font-family: Arial; font-size: 14.6667px; white-space: pre-wrap;"&gt;$identityModel.get("managerDisplayName"),&lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;$identityModel.get("requesterDisplayName") has submitted a new sponsored account request. &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Please review the details for this request and approve/reject this request via the AccessBoston portal or by clicking &lt;a href="http://devcobiiq:8080/identityiq/dashboard.jsf"&gt;here&lt;/a&gt;
+&lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Request details : &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Name: $identityModel.get("firstName") $identityModel.get("lastName") &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Role Type: $identityModel.get("accountType")&lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Email Address: $identityModel.get("email") &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Start Date:$spTools.formatDate($identityModel.get("cobHireDate"),"yyyy-MM-dd") &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;End Date :$spTools.formatDate($identityModel.get("contractEndDate"),"yyyy-MM-dd") &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Requestor: $identityModel.get("requesterDisplayName") &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Please complete this action at your earliest convenience.&lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Sincerely, AccessBoston&lt;/span&gt;
+&lt;/p&gt;
+     &lt;img src="http://devcobiiq:8080/identityiq/ui/images/TopLogo1.png"/&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Questions about the sponsored account creation process should be directed to the DoIT Service Desk via 617-635-7378 or &lt;/span&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;BPS Technology Help Desk &amp;nbsp;at 617-635-9200.&lt;/span&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 11pt; font-family: Arial; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;Please Note: this is an auto-generated email, please do not reply to this email. &lt;/span&gt;
+&lt;/p&gt;
+&lt;br&gt;
+&lt;p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"&gt;
+&lt;span style="font-size: 8pt; font-family: Calibri; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;The information contained in this communication, including any attachments, is intended solely for the use of the individual or entity to whom it is addressed and others authorized to receive it. It may contain confidential or legally privileged information. If you are not the intended recipient you are hereby notified that any disclosure, copying, distribution or taking any action in reliance on the contents of this information is strictly prohibited and may be unlawful. If you have received this communication in error, please notify us immediately by responding to this email and then delete it from your system. The sender is neither liable for the proper and complete transmission of the information contained in this communication nor for any delay in its receipt.&lt;/span&gt;
+&lt;/p&gt;
+&lt;div&gt;
+&lt;span style="font-size: 8pt; font-family: Calibri; color: rgb(0, 0, 0); background-color: transparent; font-variant-numeric: normal; font-variant-east-asian: normal; vertical-align: baseline; white-space: pre-wrap;"&gt;
+&lt;br&gt;
+&lt;/span&gt;
+&lt;/div&gt;
+&lt;/span&gt;
+
+
+&lt;/body&gt;
+&lt;/html&gt;
+</Body>
+  <Description>Manager Approval Email Template for Sponsored Account Creation</Description>
+  <Subject>ACTION REQUIRED: Sponsored Account Requested</Subject>
+</EmailTemplate>

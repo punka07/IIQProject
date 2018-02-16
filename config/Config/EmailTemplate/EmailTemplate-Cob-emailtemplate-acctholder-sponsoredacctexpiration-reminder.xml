@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE EmailTemplate PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<EmailTemplate name="COB-EmailTemplate-AcctHolder-SponsoredAcctExpiration-Reminder">
+  <Body>Hello $identityModel.get("firstName") $identityModel.get("lastName"),
+
+Your sponsored account of the type $accountType will expire in two weeks.  Please communicate with the Requestor of this account if you require an extension.
+
+End Date :$spTools.formatDate($identityModel.get("contractEndDate"),"yyyy-MM-dd") 
+
+Requestor:  $identityModel.get("requesterDisplayName")  
+
+If this end date is correct, no action is required.  If the account is already no longer required, please let us know so that we can terminate access.
+
+Sincerely, AccessBoston
+
+Questions about the sponsored account creation process should be directed to the DoIT Service Desk via 617-635-7378 or BPS Technology Help Desk Support  at 617-635-9200.
+Please Note: this is an auto-generated email, please do not reply to this email. 
+
+
+The information contained in this communication, including any attachments, is intended solely for the use of the individual or entity to whom it is addressed and others authorized to receive it. It may contain confidential or legally privileged information. If you are not the intended recipient you are hereby notified that any disclosure, copying, distribution or taking any action in reliance on the contents of this information is strictly prohibited and may be unlawful. If you have received this communication in error, please notify us immediately by responding to this email and then delete it from your system. The sender is neither liable for the proper and complete transmission of the information contained in this communication nor for any delay in its receipt.
+</Body>
+  <Subject>Subject: NOTIFICATION: Sponsored Account Ending in 2 Weeks</Subject>
+</EmailTemplate>

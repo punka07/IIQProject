@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="COB-Custom-Joiner-Mappings">
+  <Attributes>
+    <Map>
+      <entry key="Birthright Assignment Type" value="Dynamic Roles"/>
+      <entry key="Default Assignments">
+        <value>
+          <List>
+            <String>Dev_PeopleSoft_Financials</String>
+            <String>Dev_CityHall_AD</String>
+            <String>Dev_BPS_AD</String>
+            <String>Dev_HDAP</String>
+          </List>
+        </value>
+      </entry>
+      <entry key="Trigger Field Selector">
+        <value>
+          <IdentitySelector>
+            <MatchExpression and="true">
+              <MatchTerm name="status" value="A"/>
+            </MatchExpression>
+          </IdentitySelector>
+        </value>
+      </entry>
+      <entry key="Trigger Type" value="Selector"/>
+    </Map>
+  </Attributes>
+</Custom>

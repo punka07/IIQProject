@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" name="COB-Workflow-ExtendSponsoredAccount" type="IdentityLifecycle">
+  <Variable initializer="string:true" name="transient"/>
+  <Variable name="launcher"/>
+  <Variable name="launcherIdentity">
+    <Script>
+      <Source><![CDATA[
+      import sailpoint.object.Identity;
+      import sailpoint.tools.*;
+      
+      Identity launcherIdentity = context.getObjectByName(Identity.class,launcher);
+      return launcherIdentity;
+      ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="launcherDisplayName">
+    <Script>
+      <Source><![CDATA[
+      import sailpoint.object.Identity;
+      import sailpoint.tools.*;
+
+      return launcherIdentity.getDisplayName();
+      ]]></Source>
+    </Script>
+  </Variable>
+  <Variable name="currentUserName"/>
+  <Variable name="newExpDate"/>
+  <Variable name="selectedUser"/>
+  <Variable initializer="string:false" name="trace"/>
+  <Description>Workflow to reset account passwords.
+	</Description>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-ProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-AuditRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-ProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-SpAcctProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="cobUtils"/>
+    <Reference class="sailpoint.object.Rule" name="Approval Library"/>
+    <Reference class="sailpoint.object.Rule" name="LCM Workflow Library"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start" resultVariable="workflowLogPrefix">
+    <Script>
+      <Source><![CDATA[
+		String workflowLogPrefix = workflow.getName() + "::" + launcher + "::";
+		return workflowLogPrefix;
+	  ]]></Source>
+    </Script>
+    <Transition to="UserForm"/>
+  </Step>
+  <Step icon="Message" name="UserForm" posX="115" posY="10">
+    <Approval name="Select Sponsored Account-Form" owner="ref:launcher" return="selectedUser,requestCancelled" send="launcher">
+      <Form name="Select Sponsored Account-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle">
+              <value>
+                <Script>
+                  <Source><![CDATA[
+                return "Select User";
+                ]]></Source>
+                </Script>
+              </value>
+            </entry>
+          </Map>
+        </Attributes>
+        <Button action="next" label="Next"/>
+        <Button action="cancel" label="Exit"/>
+        <Section>
+          <Field displayName="Select User" helpKey="Select a user from the drop-down" name="selectedUser" type="identity">
+            <Attributes>
+              <Map>
+                <entry key="valueProperty" value="name"/>
+              </Map>
+            </Attributes>
+            <Script>
+              <Source><![CDATA[
+              import sailpoint.object.Filter;
+             
+              Filter f=Filter.and(Filter.eq("manager.name",launcher),Filter.ne("links.application.name","Dev_PeopleSoftHCM"));
+             
+              String filterString=f.getExpression();
+              log.warn("filterString::"+filterString);
+              field.setFilterString(filterString);
+              
+              ]]></Source>
+            </Script>
+          </Field>
+        </Section>
+      </Form>
+    </Approval>
+    <Transition to="end" when="!approved"/>
+    <Transition to="Extend Selected User"/>
+  </Step>
+  <Step name="Extend Selected User">
+    <Approval name="Extend Selected User-Form" owner="ref:launcher" return="newExpDate" send="selectedUser">
+      <Form name="Extend Selected User-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Extend Sponsored Account for the Selected User"/>
+          </Map>
+        </Attributes>
+        <Button action="next" label="Next"/>
+        <Button action="back" label="Back"/>
+        <Button action="cancel" label="Exit"/>
+        <Field displayName="Selected User" name="selectedUser" readOnly="true" type="identity" value="ref:selectedUser"/>
+        <Field dependencies="selectedUser" displayName="Current End Date" name="expDate" readOnly="true" type="date">
+          <Script>
+            <Source><![CDATA[
+        import sailpoint.object.Identity;
+        import java.util.*;
+        import java.text.SimpleDateFormat;
+              
+              
+            
+              log.warn("selectedUser:"+selectedUser);
+          
+          Identity ident= context.getObjectByName(Identity.class,selectedUser);
+          Date expDate;
+              if(ident != null && ident.getStringAttribute("cobTermDate") != null ){
+          String expDateStr= ident.getStringAttribute("cobTermDate");
+              
+          expDate= new SimpleDateFormat("yyyy-MM-dd").parse(expDateStr);
+              
+         
+              }
+               return expDate;
+        
+        ]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="New End Date" name="newExpDate" type="date">
+          <Script>
+            <Source><![CDATA[
+          import java.util.Date;
+            
+            Date date= new Date();
+            return date;
+          ]]></Source>
+          </Script>
+        </Field>
+      </Form>
+    </Approval>
+    <Transition to="Confirm Extension" when="approved"/>
+    <Transition to="UserForm" when="!approved"/>
+  </Step>
+  <Step name="Confirm Extension">
+    <Approval name="Confirm Extension-Form" owner="ref:launcher" send="selectedUser,newExpDate">
+      <Form name="Confirm Extension-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Confirm Extension"/>
+          </Map>
+        </Attributes>
+        <Button action="next" label="Submit"/>
+        <Button action="back" label="Back"/>
+        <Button action="cancel" label="Exit"/>
+        <Field displayName="Selected User" name="selectedUser" readOnly="true" type="identity" value="ref:selectedUser"/>
+        <Field displayName="New End Date" name="newExpDate" readOnly="true" type="date" value="ref:newExpDate"/>
+      </Form>
+    </Approval>
+    <Transition to="BuildPlan" when="approved"/>
+    <Transition to="Extend Selected User" when="!approved"/>
+  </Step>
+  <Step icon="Default" name="BuildPlan" resultVariable="plan">
+    <Arg name="newExpDate" value="ref:newExpDate"/>
+    <Arg name="identityName" value="ref:selectedUser"/>
+    <Script>
+      <Source><![CDATA[
+        import sailpoint.object.*;
+        import sailpoint.api.*;
+        
+        
+        //Create provisioning plan to reset passwords in the respective applications
+        Identity id= context.getObjectByName(Identity.class,launcher);
+        //enable the account if in disabled state in IIQ
+        if(id.isDisabled(){
+            id.setDisabled(false);
+        }
+        boolean isBPSRequest= isBPSRequest(id);
+        Application bpsAdAPP=context.getObjectByName(Application.class,"Dev_BPS_AD");
+        Application adAPP= context.getObjectByName(Application.class,"Dev_CityHall_AD");
+        Application hdapAPP= context.getObjectByName(Application.class,"Dev_HDAP");
+        IdentityService idService = new IdentityService(context);
+        List adLinks= idService.getLinks(id,adAPP);
+        String adNative= "";
+        List bpsAdLinks= idService.getLinks(id,bpsAdAPP);
+        String bpsAdNative="";
+        String hdapNative= "";
+        List hdapLinks= idService.getLinks(id,hdapAPP);
+        if(!adLinks.isEmpty()){
+           for(Link adLink: adLinks){
+              adNative= adLink.getNativeIdentity();
+        
+        }
+        }
+        if(!bpsAdLinks.isEmpty()){
+          for(Link bpsAdLink:bpsAdLinks){
+             bpsAdNative= bpsAdLink.getNativeIdentity();
+        }
+        }
+        if(!hdapLinks.isEmpty()){
+          for(Link hdapLink: hdapLinks){
+                  hdapNative= hdapLink.getNativeIdentity();
+        }
+        }
+        ProvisioningPlan plan = new ProvisioningPlan();
+        plan.setIdentity(id);
+        List acctReqs= new ArrayList();
+		// create AD Account Request
+		ProvisioningPlan.AccountRequest acctReqAD = new  ProvisioningPlan.AccountRequest();
+		acctReqAD.setOperation(ProvisioningPlan.AccountRequest.Operation.Modify);
+		if(isBPSRequest){
+		acctReqAD.setApplication("Dev_BPS_AD");
+        acctReqAD.setNativeIdentity(bpsAdNative);
+        }else{
+        acctReqAD.setApplication("Dev_CityHall_AD");
+        acctReqAD.setNativeIdentity(adNative);
+        
+        }
+        acctReqAD.add(new ProvisioningPlan.AttributeRequest("password", ProvisioningPlan.Operation.Set,context.encrypt(newSecret)));
+        acctReqs.add(acctReqAD); 
+        // create HDAP Account Request
+		ProvisioningPlan.AccountRequest acctReqHDAP = new  ProvisioningPlan.AccountRequest();
+		acctReqHDAP.setOperation(ProvisioningPlan.AccountRequest.Operation.Modify);
+		acctReqHDAP.setApplication("Dev_HDAP");
+        acctReqHDAP.setNativeIdentity(hdapNative);
+        acctReqHDAP.add(new ProvisioningPlan.AttributeRequest("userPassword", ProvisioningPlan.Operation.Set,context.encrypt(newSecret)));
+        acctReqs.add(acctReqHDAP); 
+        //add more below
+        id.setPassword(newSecret);
+        context.saveObject(id);
+        context.commitTransaction();
+        
+        plan.setAccountRequests(acctReqs);
+        return plan;
+	  ]]></Source>
+    </Script>
+    <Transition to="Compile_Plan"/>
+  </Step>
+  <Step action="compileProvisioningProject" icon="Default" name="Compile_Plan" posX="173" posY="20" resultVariable="project">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="requester" value="ref:launcher"/>
+    <Arg name="source" value="UI"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="noLocking" value="true"/>
+    <Arg name="noApplicationTemplates" value="true"/>
+    <Arg name="requireCreateTemplates" value="false"/>
+    <Arg name="identityName" value="ref:finalIdentityName"/>
+    <Arg name="optimisticProvisioning" value="false"/>
+    <Transition to="Create Identity Request"/>
+  </Step>
+  <Step action="call:createIdentityRequest" icon="Task" name="Create Identity Request" posX="271" posY="20" resultVariable="identityRequest">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="source" value="UI"/>
+    <Arg name="priority" value="ref:workItemPriority"/>
+    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
+    <Arg name="identityName" value="ref:finalIdentityName"/>
+    <Arg name="flow" value="ref:flow"/>
+    <Return name="identityRequestId" to="identityRequestId"/>
+    <Transition to="Provision"/>
+  </Step>
+  <Step action="call:completeIdentityRequest" icon="Task" name="Complete Identity Request" posX="261" posY="12" resultVariable="identityRequest">
+    <Arg name="project" value="ref:project"/>
+    <Arg name="identityRequestId" value="ref:identityRequestId"/>
+    <Arg name="autoVerify" value="true"/>
+    <Transition to="Audit_Event"/>
+  </Step>
+  <Step icon="Default" name="Provision" posX="526" posY="16">
+    <Arg name="disableIdentityRequests"/>
+    <Arg name="project" value="ref:project"/>
+    <Arg name="maxRetries"/>
+    <Arg name="provisioningRetryThreshold"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="priority" value="ref:workItemPriority"/>
+    <Arg name="trace" value="ref:trace"/>
+    <Arg name="identityRequestId" value="ref:identityRequestId"/>
+    <Arg name="retryProject"/>
+    <Arg name="retries"/>
+    <Arg name="enableRetryRequest"/>
+    <Arg name="foregroundProvisioning" value="ref:foregroundProvisioning"/>
+    <Description>Call a sub process to provision</Description>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="Provision with retries"/>
+    </WorkflowRef>
+    <Transition to="Complete Identity Request"/>
+  </Step>
+  <Step icon="Task" monitored="true" name="Audit_Event">
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="project" value="ref:project"/>
+    <Arg name="source" value="COB-Workflow-Reset-Passwords"/>
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		cobLog(logPrefix, "EnterStep");
+
+		Identity idn = context.getObject(Identity.class, launcher);
+		cobProvisioningAuditLog(logPrefix, source, launcher, project, idn);
+
+		cobLog(logPrefix, "Exit Step");
+		]]></Source>
+    </Script>
+    <Transition to="Send Email"/>
+  </Step>
+  <Step name="Send Email">
+    <Arg name="templateName" value="COB-EmailTemplate-ResetAccountPasswords"/>
+    <Arg name="launcherIdentity" value="ref:launcherIdentity"/>
+    <Arg name="launcherDisplayName" value="ref:launcherDisplayName"/>
+    <Arg name="to">
+      <Script>
+        <Source><![CDATA[
+  import sailpoint.object.Identity;
+  
+return launcherIdentity.getEmail();
+  ]]></Source>
+      </Script>
+    </Arg>
+    <Script>
+      <Source><![CDATA[
+        import java.util.*;
+		import sailpoint.object.EmailTemplate;
+		import sailpoint.object.EmailOptions;
+		import java.util.Map;
+		import java.util.HashMap;
+  
+  String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";	
+  cobLog(logPrefix, "EnterStep");		
+      EmailTemplate infoEmailTemplate = context.getObjectByName(EmailTemplate.class,templateName);
+     
+      EmailOptions emailOptions= new EmailOptions();
+      emailOptions.setVariable("launcherDisplayName",launcherDisplayName);
+      emailOptions.setTo(to);
+      emailOptions.setSendImmediate(true);
+        
+      context.sendEmailNotification(infoEmailTemplate, emailOptions);
+      cobLog(logPrefix, "EnterStep");
+  ]]></Source>
+    </Script>
+    <Transition to="end"/>
+  </Step>
+  <Step icon="Stop" name="end" posX="268" posY="10"/>
+  <Step catches="complete" icon="Catches" name="HandleException" posX="37" posY="690">
+    <Script>
+      <Source><![CDATA[
+        
+		 
+		   String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		   try {
+	      cobLog(logPrefix, "EnterStep");
+				if(!wfcontext.getWorkflowCase().getErrors().isEmpty()){
+				sendErrorEmailFromWorkflow(wfcontext);
+				}
+				cobLog(logPrefix, "ExitStep");
+			}
+		 catch (Throwable e) {
+			cobLog(logPrefix, "Exception:");
+			e.printStackTrace();
+		}
+	  
+	
+       ]]></Source>
+    </Script>
+  </Step>
+</Workflow>

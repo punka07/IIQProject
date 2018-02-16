@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="COB-Custom-LeaverMappings">
+  <Attributes>
+    <Map>
+      <entry key="Default Deletes">
+        <value>
+          <List>
+            <String>Active Directory</String>
+            <String>Enterprise LDAP</String>
+          </List>
+        </value>
+      </entry>
+      <entry key="Default Disables">
+        <value>
+          <List>
+            <String>Active Directory</String>
+            <String>Enterprise LDAP</String>
+          </List>
+        </value>
+      </entry>
+      <entry key="Leaver Build Plan Type" value="Disable All"/>
+      <entry key="Trigger Field Selector">
+        <value>
+          <IdentitySelector>
+            <MatchExpression and="true">
+              <MatchTerm name="status" value="T"/>
+              <MatchTerm name="inactive" value="true"/>
+            </MatchExpression>
+          </IdentitySelector>
+        </value>
+      </entry>
+      <entry key="Trigger Type" value="Selector"/>
+    </Map>
+  </Attributes>
+</Custom>

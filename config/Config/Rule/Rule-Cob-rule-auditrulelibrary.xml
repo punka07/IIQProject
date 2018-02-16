@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-AuditRuleLibrary">
+  <Source><![CDATA[
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.StringTokenizer;
+import java.util.TimeZone;
+import javax.naming.Context;
+import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
+import javax.naming.directory.BasicAttribute;
+import javax.naming.directory.BasicAttributes;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.InitialDirContext;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
+import sailpoint.api.Aggregator;
+import sailpoint.api.IdentityService;
+import sailpoint.api.PasswordGenerator;
+import sailpoint.api.SailPointContext;
+import sailpoint.connector.AbstractConnector;
+import sailpoint.object.Application;
+import sailpoint.object.AuditEvent;
+import sailpoint.object.Custom;
+import sailpoint.object.EmailOptions;
+import sailpoint.object.EmailTemplate;
+import sailpoint.object.Filter;
+import sailpoint.object.Identity;
+import sailpoint.object.Link;
+import sailpoint.object.ManagedAttribute;
+import sailpoint.object.PasswordPolicy;
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.AccountRequest;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import sailpoint.object.ProvisioningProject;
+import sailpoint.object.QueryOptions;
+import sailpoint.object.ResourceObject;
+import sailpoint.object.Schema;
+import sailpoint.object.TaskResult;
+import sailpoint.object.Workflow;
+import sailpoint.object.WorkflowCase;
+import sailpoint.server.Auditor;
+import sailpoint.tools.GeneralException;
+import sailpoint.tools.Util;
+import sailpoint.workflow.WorkflowContext;
+  
+  
+  
+  public void cobLog(String logPrefix, String message) {
+		log.warn(logPrefix + message);
+	}
+  	
+	public List cobProvisioningAuditLog(String callerLogPrefix, String source, String requestor, ProvisioningProject project, Identity idn)
+			throws GeneralException {
+		List errors = new ArrayList();
+		List plans = project.getPlans();
+		if (plans != null) {
+			for (Object planObj : plans) {
+				ProvisioningPlan plan = (ProvisioningPlan) planObj;
+				if (!Util.isEmpty(plan.getAccountRequests())) {
+					List planErrors = cobProvisioningPlanAuditLog(callerLogPrefix, source, requestor, (ProvisioningPlan) planObj, idn);
+					errors.addAll(planErrors);
+				}
+			}
+		}
+		return errors;
+	}
+
+	private List cobProvisioningPlanAuditLog(String callerLogPrefix, String source, String requestor, ProvisioningPlan plan, Identity idn)
+			throws GeneralException {
+		String logPrefix = callerLogPrefix + "cobProvisioningPlanAuditLog::";
+		cobLog(logPrefix, "Enter Function");
+		List errors = new ArrayList();
+		for (Object accountReqObj : plan.getAccountRequests()) {
+			sailpoint.object.ProvisioningPlan.AccountRequest accReq = (sailpoint.object.ProvisioningPlan.AccountRequest) accountReqObj;
+			List provisioningErrors = null;
+			String errorStr = null;
+			sailpoint.object.ProvisioningResult provResult = accReq.getResult();
+			if (provResult != null) {
+				provisioningErrors = provResult.getErrors();
+				if (!Util.isEmpty(provisioningErrors)) {
+					errorStr = "Errors :" + provisioningErrors.toString();
+				}
+			}
+			AuditEvent event = cobGetAuditLogEvent(source, requestor, accReq.getApplicationName(), accReq.getNativeIdentity(), idn, errorStr);
+      log.warn("event::"+event);
+			if (event != null) {
+				event.setAttributeName(getAuditEventAttributeName(accReq, source));
+				cobLog(logPrefix, "[action=" + event.getAction() + ",source=" + event.getSource() + ",target=" + event.getTarget() + ",accountName="
+						+ event.getAccountName() + ",application=" + event.getApplication() + "]");
+				if (!Util.isEmpty(provisioningErrors)) {
+					cobLog(logPrefix, errorStr);
+					errors.addAll(provisioningErrors);
+				} else if (accReq.getAttributeRequests() != null) {
+					StringBuilder sbSet = new StringBuilder();
+					StringBuilder sbAdd = new StringBuilder();
+					StringBuilder sbRemove = new StringBuilder();
+					for (Object attrReqObj : accReq.getAttributeRequests()) {
+						sailpoint.object.ProvisioningPlan.AttributeRequest attrReq = (sailpoint.object.ProvisioningPlan.AttributeRequest) attrReqObj;
+						String attrName = attrReq.getName();
+						String attrValue;
+						if ("userPassword".equalsIgnoreCase(attrName)) {
+							attrValue = "****";
+						} else if ("password".equalsIgnoreCase(attrName)) {
+							attrValue = "****";
+						} else {
+							attrValue = attrReq.getValue() == null ? "" : attrReq.getValue().toString();
+						}
+						if (sailpoint.object.ProvisioningPlan.Operation.Set.equals(attrReq.getOperation())) {
+							event.setAttribute(attrName, attrValue);
+							sbSet.append(attrName).append("=").append(attrValue).append(",");
+						} else if (sailpoint.object.ProvisioningPlan.Operation.Add.equals(attrReq.getOperation())) {
+							event.setAttribute(attrName, attrValue);
+							sbAdd.append(attrName).append("=").append(attrValue).append(",");
+						} else if (sailpoint.object.ProvisioningPlan.Operation.Remove.equals(attrReq.getOperation())) {
+							event.setAttribute(attrName, "remove -" + attrValue);
+							sbRemove.append(attrName).append("=").append(attrValue).append(",");
+						}
+					}
+					if (sbSet.length() != 0) {
+						sbSet.setLength(sbSet.length() - 1);
+						cobLog(logPrefix, "Set attributes [" + sbSet.toString() + "]");
+					}
+					if (sbAdd.length() != 0) {
+						sbAdd.setLength(sbAdd.length() - 1);
+						cobLog(logPrefix, "Added attributes [" + sbAdd.toString() + "]");
+					}
+					if (sbRemove.length() != 0) {
+						sbRemove.setLength(sbRemove.length() - 1);
+						cobLog(logPrefix, "Removed attributes [" + sbRemove.toString() + "]");
+					}
+				}
+				Auditor.log(event);
+				context.commitTransaction();
+			}
+		}
+		cobLog(logPrefix, "Exit Function");
+		return errors;
+	}
+
+	private String getAuditEventAttributeName(AccountRequest accReq, String source) {
+		String attributeName = null;
+		if (accReq != null) {
+			if (accReq.getOp() != null) {
+				attributeName = accReq.getOp().name();
+			}
+		}
+		//
+		if (attributeName == null || "Modify".equalsIgnoreCase(attributeName)) {
+			if (source != null) {
+				if (source.toLowerCase().contains("terminat")) {
+					attributeName = "Disable";
+				}
+			}
+		}
+		//
+		if (attributeName == null) {
+			attributeName = "Status";
+		}
+		//
+		return attributeName;
+	}
+
+	private AuditEvent cobGetAuditLogEvent(String source, String requestor, String applicationName, String accountName, Identity idn, String error)
+			throws GeneralException {
+		AuditEvent event = null;
+		String auditAction = "cobAudit";
+	
+			event = new AuditEvent();
+			event.setAction(auditAction);
+			event.setSource(source);
+			event.setTarget(idn.getName());
+			event.setAccountName(accountName);
+			event.setApplication(applicationName);
+			event.setAttribute("requestor", requestor);
+			event.setAttributeName("Status");
+			if (Util.isNotNullOrEmpty(error)) {
+				event.setAttributeValue("Error");
+				String errStr = "Errors:" + error;
+				event.setString2(errStr);
+			} else {
+				event.setAttributeValue("Success");
+			}
+			
+		
+		return event;
+	}
+
+	public void cobAuditLog(String callerLogPrefix, String source, String requestor, String applicationName, String accountName, Identity identity,
+			String error) throws GeneralException {
+		String logPrefix = callerLogPrefix + "cobAuditLog::";
+		cobLog(logPrefix, "Enter Function");
+		AuditEvent event = cobGetAuditLogEvent(source, requestor, applicationName, accountName, identity, error);
+		if (event != null) {
+			cobLog(logPrefix, "[action=" + event.getAction() + ",source=" + event.getSource() + ",target=" + event.getTarget() + ",accountName="
+					+ event.getAccountName() + ",application=" + event.getApplication() + "]");
+			if (!Util.isNotNullOrEmpty(error)) {
+				cobLog(logPrefix, error);
+			}
+			Auditor.log(event);
+			context.commitTransaction();
+		}
+		cobLog(logPrefix, "Exit Function");
+	}
+
+	public void cobAuditLogByDataUsed(String callerLogPrefix, Map dataUsed, String source, String requestor, String applicationName,
+			String accountName, Identity identity, String error) throws GeneralException {
+		String logPrefix = callerLogPrefix + "cobAuditLogByDataUsed::";
+		cobLog(logPrefix, "Enter Function::dataUsed=" + dataUsed);
+		if (dataUsed != null) {
+			if (dataUsed.size() > 0) {
+				AuditEvent event = cobGetAuditLogEvent(source, requestor, applicationName, accountName, identity, error);
+				if (event != null) {
+					cobLog(logPrefix, "[action=" + event.getAction() + ",source=" + event.getSource() + ",target=" + event.getTarget()
+							+ ",accountName=" + event.getAccountName() + ",application=" + event.getApplication() + "]");
+					for (Object entryObj : dataUsed.entrySet()) {
+						java.util.Map.Entry entry = (java.util.Map.Entry) entryObj;
+						event.setAttribute((String) entry.getKey(), entry.getValue());
+					}
+					if (!Util.isNotNullOrEmpty(error)) {
+						cobLog(logPrefix, error);
+					}
+					Auditor.log(event);
+					context.commitTransaction();
+				}
+			}
+		}
+		cobLog(logPrefix, "Exit Function");
+	}
+ 
+  ]]></Source>
+</Rule>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="COB-Custom-DeptHead-Mapping">
+  <Attributes>
+    <Map>
+      <entry key="Dept-DeptHeads">
+        <value>
+          <Map>
+          <entry key="144000" value="149208"/><entry key="414000" value="136238"/><entry key="136000" value="052474"/><entry key="131000" value="050981"/><entry key="385000" value="140882"/><entry key="141000" value="148499"/><entry key="161000" value="050376"/><entry key="112000" value=""/><entry key="137000" value="050913"/><entry key="114000" value="136028"/><entry key="404000" value="115522"/><entry key="149000" value="106570"/><entry key="182000" value="110675"/><entry key="387000" value="116661"/><entry key="121000" value="051321"/><entry key="231000" value="100922"/><entry key="303000" value="136428"/><entry key="403000" value="130982"/><entry key="148000" value=""/><entry key="142000" value="050298"/><entry key="113000" value="090300"/><entry key="260000" value="132256"/><entry key="150000" value="127466"/><entry key="151000" value="131771"/><entry key="111000" value="132179"/><entry key="188000" value="111013"/><entry key="412000" value="087745"/><entry key="147000" value="131917"/><entry key="310000" value="100992"/><entry key="253000" value="100992"/><entry key="300000" value="097640"/><entry key="411000" value=""/><entry key="143000" value="104749"/><entry key="180000" value="051749"/><entry key="181000" value="050579"/><entry key="311000" value="100992"/><entry key="163000" value="055324"/><entry key="782000" value="110896"/><entry key="156000" value="135306"/><entry key="415000" value="110675"/><entry key="251000" value="100992"/><entry key="138000" value="051530"/><entry key="741000" value="121257"/><entry key="417000" value="131715"/><entry key="155000" value="050298"/>
+          </Map>
+          </value>
+          </entry>
+          <entry key="Dept-DeptHeadNames">
+          <value>
+          <Map>
+          <entry key="144000" value="Emme Handy"/>
+<entry key="414000" value="Julie Burros"/><entry key="136000" value="Ronald Rakow"/><entry key="131000" value="Sally Glora"/><entry key="385000" value="William Morales"/><entry key="141000" value="Justin Sterritt"/><entry key="161000" value="Maureen Feeney"/><entry key="112000" value=""/><entry key="137000" value="Celia Barton"/><entry key="114000" value="Christine Pulgini"/><entry key="404000" value="Kristen McCosh"/><entry key="149000" value="Patricia Boyle McKenna"/><entry key="182000" value="John Barros"/><entry key="387000" value="Emily Shea"/><entry key="121000" value="Dion Irish"/><entry key="231000" value="Rene Fielding"/><entry key="303000" value="Austin Blackmon"/><entry key="403000" value="Janine Anzalota"/><entry key="148000" value="Marianna Gil"/><entry key="142000" value="Vivian Leonard"/><entry key="113000" value="Alejandra St. Guillen"/><entry key="260000" value="William Christopher"/><entry key="150000" value="Katie King"/><entry key="151000" value="Eugene O'Flaherty"/><entry key="111000" value="David Sweeney"/><entry key="188000" value="Devin Quirk"/><entry key="412000" value="Jerome Smith"/><entry key="147000" value="Alexis Tkachuk"/><entry key="310000" value="Chris Osgood"/><entry key="253000" value="Chris Osgood"/><entry key="300000" value="Christopher Cook"/><entry key="411000" value=""/><entry key="143000" value="Kevin Coyne"/><entry key="180000" value="Gregory Rooney"/><entry key="181000" value="Tricia Lyons"/><entry key="311000" value="Chris Osgood"/><entry key="163000" value="Patty McMahon"/><entry key="782000" value="Tim Smythe"/><entry key="156000" value="Karilyn Crockett"/><entry key="415000" value="John Barros"/><entry key="251000" value="Chris Osgood"/><entry key="138000" value="Richard DePiano"/><entry key="741000" value="Giselle Sterling"/><entry key="417000" value="Megan Costello"/><entry key="155000" value="Vivian Leonard"/>
+          </Map>
+          </value>
+          </entry>
+          </Map>
+          </Attributes>
+          </Custom>
+          

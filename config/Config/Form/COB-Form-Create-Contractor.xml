@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-Form-Create-Contractor">
+  <Attributes>
+    <Map>
+      <entry key="labelAlign" value="left"/>
+      <entry key="pageTitle" value="Sponsored Account Creation Form"/>
+      <entry key="title" value="This form is used to request the addition of users to the City of Boston's Identity Mangement system. All city employees already have accounts on the system, employees of quasi-city agencies will require a new account request. Requests should only be made if a non-city or quasi-city employee needs access to a city system to collaborate on a city initiative, and requests should be made by the city employee responsible for the user. Please include all required information in this request or the request will be denied. Once you submit the request, the Hiring Manager will need to approve the request to process the request. By completing this request, you accept responsibility for this user and will be required to confirm that access is still required periodically."/>
+    </Map>
+  </Attributes>
+  <Section label="New User Information">
+    <Field displayName="User Type" helpKey="Please select from the drop-down" name="userType" required="true" type="List">
+      <AllowedValuesDefinition>
+        <Script>
+          <Source><![CDATA[
+        import sailpoint.object.Custom;
+        import java.util.*;
+          
+          Custom customObj = context.getObjectByName(Custom.class,"COB-Custom-UserTypes");
+          List userTypes =new ArrayList();
+          if(customObj != null){
+          
+           userTypes = customObj.get("userTypes");  
+          
+          }
+            if(userTypes != null){
+           
+               return userTypes;
+            }else{
+          return null;
+            }
+          
+        ]]></Source>
+        </Script>
+      </AllowedValuesDefinition>
+    </Field>
+    <Field displayName="First Name" name="firstName" required="true" type="String"/>
+    <Field displayName="Last Name" name="lastName" required="true" type="String"/>
+    <Field displayName="Middle Name" name="middleName" type="String"/>
+    <Field displayName="Sponsoring Manager" name="sponsorManager" required="true" type="Identity"/>
+    <Field displayName="Department Name" name="departmentName" required="true" type="String"/>
+    <Field displayName="Department ID" name="departmentId" required="true" type="String"/>
+    <Field displayName="Email" helpKey="City Email Address if Available" name="emailAdd" type="String"/>
+    <Field displayName="Location" name="location" required="true" type="String"/>
+    <Field displayName="Account Expiration Date" name="contractEndDate" required="true" type="date">
+      <ValidationScript>
+        <Source><![CDATA[	
+		import java.util.Date;
+		
+		Date today = new Date();
+		
+		if (value!=null && value.before(today)){
+			return "Contract end date must be in the future.";
+		}
+		
+		]]></Source>
+      </ValidationScript>
+    </Field>
+    <Field displayName="Telephone No." helpKey="Enter in +x-xxxxxxxxxx format" name="phone" type="string">
+      <ValidationScript>
+        <Source><![CDATA[
+			   import sailpoint.tools.Message;
+			   import sailpoint.object.Identity;
+			   import java.util.regex.Matcher;
+			   import java.util.regex.Pattern;
+		   	
+		   		//Phone number format +x-xxxxxxxxxx;
+		   	   String regex = "^\\+[0-9]{1,3}\\-[0-9]{4,14}$";	
+			   List messages = new ArrayList();
+			   Message msg = new Message();
+			   Pattern pattern = Pattern.compile(regex);
+          	   if(value!=null){
+              		Matcher matcher = pattern.matcher(value);
+                		if (!matcher.matches()) {
+                  			msg.setKey("Phone number format should be in +x-xxxxxxxxxx.");		
+                			messages.add(msg);
+                			return messages;  
+         				} 
+              		}
+        	 	else
+          			return null; 
+			  ]]></Source>
+      </ValidationScript>
+    </Field>
+  </Section>
+  <Button action="next" label="Next"/>
+  <Button action="cancel" label="Cancel"/>
+</Form>

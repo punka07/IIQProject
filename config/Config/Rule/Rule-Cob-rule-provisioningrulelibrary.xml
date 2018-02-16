@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-ProvisioningRuleLibrary">
+  <Source><![CDATA[
+  import sailpoint.tools.*;
+  import sailpoint.object.*;
+  import sailpoint.api.*;
+  import org.apache.log4j.Logger;
+  import sailpoint.workflow.WorkflowContext;
+  
+  
+   Logger provRuleLogger = Logger.getLogger("com.cob.rule.ProvisioningRuleLibrary");
+  
+  //Generate Password
+	public String cobGenerateDefaultPassword(String employeeID, String lastName) {
+		String sPassword = null;
+		if (Util.isNullOrEmpty(employeeID) || Util.isNullOrEmpty(lastName) || employeeID.length() < 6) {
+			log.warn("COB-Rule-ProvisioningRuleLibrary::cobGenerateDefaultPassword::identityName=\"" + employeeID + "\" lastName=\"" + lastName
+					+ "\" Unable to build password.");
+		} else {
+			employeeID = employeeID.toLowerCase();
+			String last = lastName.substring(0, 1);
+			String upperLast = last.toUpperCase(java.util.Locale.ROOT);
+			String lowerLast = last.toLowerCase(java.util.Locale.ROOT);
+			String firstIDStr = employeeID.substring(0, 3);
+			String secondIDStr = employeeID.substring(3);
+			sPassword = upperLast + firstIDStr + lowerLast + secondIDStr;
+		}
+		return sPassword;
+	}
+	
+	 /**
+     * 
+     * 
+     * @param wfcontext
+     * @throws GeneralException
+     */
+    public void sendErrorEmailFromWorkflow(WorkflowContext wfcontext) throws GeneralException {
+    
+        String errorNotifyTemplate= "COB-EmailTemplate-WorkflowErrors";
+        EmailTemplate template = context.getObjectByName(EmailTemplate.class,errorNotifyTemplate);
+        List errorMsgs= wfcontext.getWorkflowCase().getErrors();
+        String launcher= wfcontext.getWorkflowCase().getLauncher();
+        Identity launcherIdent = context.getObjectByName(Identity.class,launcher);
+        String toEmail= launcherIdent.getEmail();
+        EmailOptions emailOptions= new EmailOptions();
+        emailOptions.setSendImmediate(true);
+        emailOptions.setVariable("wfName",wfcontext.getRootWorkflowCase().getName());
+        emailOptions.setVariable("errorMsgs",errorMsgs);
+        emailOptions.setNoRetry(true);
+        emailOptions.setTo(toEmail);
+        emailOptions.setTo("pankaj@likemindsconsulting.com");
+        context.sendEmailNotification(template,emailOptions);
+        
+    
+    }
+  
+  public List getActiveStatusList() {
+		List activeStatus = new ArrayList();
+		activeStatus.add("L");
+		activeStatus.add("P");
+		activeStatus.add("S");
+		activeStatus.add("A");
+		return activeStatus;
+	}
+  
+  public boolean areEqualIgnoreCaseNullSafe(String string1, String string2) {
+		if (string1 == string2) {
+			return true;
+		} else if (string1 == null) {
+			return string2 == null;
+		} else {
+			return string1.equalsIgnoreCase(string2);
+		}
+	}
+
+	public boolean isCollectionContainsStringIC(Collection collection, String parString) {
+		boolean result = false;
+		if (collection != null) {
+			for (Object element : collection) {
+				if (element instanceof String) {
+					result = areEqualIgnoreCaseNullSafe((String) element, parString);
+					if (result) {
+						break;
+					}
+				}
+			}
+		}
+		//
+		return result;
+	}
+  
+  //Method for indetifying the user type
+	public String identifyEmployeeType(Identity identity) {
+		String busRelTypeCode = identity.getAttributes().getString("cobBusRelTypeCode");
+		if (busRelTypeCode == null) {
+			return "MISSINGCOBBUSRELTYPECODE";
+		}
+		if ("EMP".equalsIgnoreCase(busRelTypeCode)) {
+			return "EMP";
+		} else {
+			return "CTR";
+		}
+	}
+  
+  public boolean areMessagesPresentInWorkflowCase(WorkflowCase wc) {
+		boolean areMessagesPresent = !Util.isEmpty(wc.getMessages());
+		//
+		return areMessagesPresent;
+	}
+
+  
+  /**
+ * 
+ * @param ident
+ * @return isBPSRequest
+ * @throws GeneralException
+ * 
+ */
+public boolean isBPSRequest(Identity ident) throws GeneralException {
+    boolean isBPSRequest = false;
+    String deptCode = ident.getStringAttribute("departmentCode");
+     if(deptCode != null){
+    int deptNum = Integer.parseInt(deptCode);
+    if (101910 >= deptNum && deptNum >= 101006) {
+        isBPSRequest = true;
+    }
+     }
+
+    return isBPSRequest;
+
+}
+  
+  /**
+ * 
+ * @param ident
+ * @return boolean isCHRequest
+ * @throws GeneralException
+ */
+
+public boolean isCHRequest(Identity ident)throws GeneralException{
+    boolean isCHRequest = false;
+    String deptCode = ident.getStringAttribute("departmentCode");
+  if(deptCode != null){
+    if(!deptCode.equalsIgnoreCase("221000") || !deptCode.equalsIgnoreCase("211000")){
+        isCHRequest = true;
+    }
+  }
+    return  isCHRequest;
+}
+ 
+  
+   /**
+     * 
+     * @param deptCode
+     * @return AD Group Name
+     * 
+     */
+    public String getADDeptGrp(String deptCode){
+           
+            String deptGrp="";
+            Custom grpCustObj = context.getObjectByName(Custom.class, "COB-Custom-Department-ADGroups-Mapping");
+            if(grpCustObj != null){
+
+                boolean hasDept = grpCustObj.get("Dept-ADGroups").containsKey(deptCode);
+                provRuleLogger.debug("hasDept::"+hasDept);
+                if(hasDept){
+
+                    deptGrp=(String) grpCustObj.get("Dept-ADGroups").get(deptCode);
+
+                }
+            }
+            return deptGrp;
+        }
+  
+  public String getFullDeptName(String idName){
+    
+    
+        Identity identObj = context.getObjectByName(Identity.class, idName);
+        Custom cusObj = context.getObjectByName(Custom.class, "COB-Custom-Department-Mapping");
+        String deptFullName = "";
+        Map deptMap = (Map) cusObj.get("Id-Name-Mapping");
+        String deptId =identObj.getStringAttribute("departmentCode");
+        provRuleLogger.debug("deptId::"+deptId);
+        if(deptId != null){
+        if (deptMap.containsKey(deptId)) {
+
+            deptFullName = deptMap.get(deptId) + "-" + deptId;
+        }
+
+        return deptFullName; 
+    }
+    return null;
+  }
+  
+  /**
+ * 
+ * @param String identityName
+ * @return boolean hasFinAcct
+ */
+	public boolean hasFinAcct(String identityName) {
+		boolean hasFinAcct = false;
+		Identity identity = context.getObjectByName(Identity.class, identityName);
+		Application appObj = context.getObjectByName(Application.class, "Dev_PeopleSoftFinancials");
+		IdentityService idService = new IdentityService(context);
+		if (identity != null && appObj != null) {
+			List linkList = idService.getLinks(identity, appObj);
+			if (!linkList.isEmpty()) {
+				hasFinAcct = true;
+			}
+		}
+		return hasFinAcct;
+
+	}
+	
+/**
+ * 
+ * @param String identityName
+ * @param String appName
+ * @return
+ */
+	public String getNativeIdentity(String identityName, String appName) {
+		String nativeIdentity = null;
+		Identity identObj = context.getObjectByName(Identity.class, identityName);
+		Application appObj = context.getObjectByName(Application.class, appName);
+		if (identObj != null && appObj != null) {
+			IdentityService idService = new IdentityService(context);
+			List linkList = idService.getLinks(identObj, appObj);
+			for (Link eachLink : linkList) {
+				nativeIdentity = eachLink.getNativeIdentity();
+				break;
+			}
+		}
+		return nativeIdentity;
+	}
+	
+	/**
+	 * 
+	 * @param newIdentity
+	 * @param oldIdentity
+	 * @return resultMap
+	 *
+	 */
+	public Map getChangedAttributes(Identity newIdentity, Identity oldIdentity) {
+		Map resultMap = new HashMap();
+
+		// get first name, last name, manager, jobcode and location for both old
+		// and new identities
+		String oldDisplayName =oldIdentity.getDisplayName();
+		String oldFirstName = oldIdentity.getFirstname();
+		String oldLastName = oldIdentity.getLastname();
+		String oldJobCode = oldIdentity.getStringAttribute("cobPrimaryJobCode");
+		String oldLocation = oldIdentity.getStringAttribute("cobJobLocationCode");
+		String oldDept = oldIdentity.getStringAttribute("departmentCode");
+
+        String newDisplayName = newIdentity.getDisplayName();
+		String newFirstName = newIdentity.getFirstname();
+		String newLastName = newIdentity.getLastname();
+		String newJobCode = newIdentity.getStringAttribute("cobPrimaryJobCode");
+		String newLocation = newIdentity.getStringAttribute("cobJobLocationCode");
+		String newDept = newIdentity.getStringAttribute("departmentCode");
+		Identity newManager = newIdentity.getManager();
+		String newManagerDept = newManager.getStringAttribute("departmentCode");
+		if (newDept != newManagerDept) {
+			newDept = newManagerDept;
+		}
+		if (!newDept.equalsIgnoreCase(oldDept)) {
+			resultMap.put("deptCode", newDept);
+		}
+		if (!oldFirstName.equalsIgnoreCase(newFirstName)) {
+			resultMap.put("firstName", newFirstName);
+		}
+		if (!oldLastName.equalsIgnoreCase(newLastName)) {
+			resultMap.put("lastName", newLastName);
+		}
+		if (!oldJobCode.equalsIgnoreCase(newJobCode)) {
+			resultMap.put("jobCode", newJobCode);
+		}
+		if (!oldLocation.equalsIgnoreCase(newLocation)) {
+			resultMap.put("locationCode", newLocation);
+		}
+		if(!oldDisplayName.equalsIgnoreCase(newDisplayName)){
+			resultMap.put("displayName",newDisplayName);
+		}
+		return resultMap;
+
+	}
+	
+	/**
+	 * 
+	 * @param deptCode
+	 * @return adGrpName
+	 */
+
+	public String getDeptADGroup(String deptCode) {
+		String adGrpName = null;
+		Custom grpCustObj = context.getObjectByName(Custom.class, "COB-Custom-Department-ADGroups-Mapping");
+		if (grpCustObj != null) {
+			if (grpCustObj.get("Dept-ADGroups").containsKey(deptCode)) {
+				adGrpName = (String) grpCustObj.get("Dept-ADGroups").get(deptCode);
+			}
+		}
+		return adGrpName;
+	}
+	
+	/**
+	 * 
+	 * @param identObj
+	 * @param appObj
+	 * @return memberOf List
+	 */
+	public List getMemberOfList(Identity identObj, Application appObj) {
+		List grpList = new ArrayList();
+		IdentityService idService = new IdentityService(context);
+		List linkList = idService.getLinks(identObj, appObj);
+		for (Link eachLink : linkList) {
+			grpList = eachLink.getAttributes().getList("memberOf");
+			break;
+		}
+		if (grpList.contains("All Email Users")) {
+			grpList.remove("All Email Users");
+		}
+		if (grpList.contains("All City Hall Mail Users")) {
+			grpList.remove("All City Hall Mail Users");
+		}
+		
+		return grpList;
+
+	}
+	
+
+ /**TEST**/
+ String idName= "gmartin";
+  return getNativeIdentity(idName,"Dev_PeopleSoftFinancials");
+  
+  /**TEST**/
+  ]]></Source>
+</Rule>

@@ -1,0 +1,771 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="cobProvisioningRuleLibrary">
+  <Source><![CDATA[
+
+import sailpoint.object.Filter;
+import sailpoint.object.Identity;
+import sailpoint.object.QueryOptions;
+import sailpoint.tools.GeneralException;
+import sailpoint.tools.Util;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TimeZone;
+
+import javax.naming.CompoundName;
+import javax.naming.Context;
+import javax.naming.InvalidNameException;
+import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
+import javax.naming.directory.BasicAttribute;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.InitialDirContext;
+import javax.naming.directory.ModificationItem;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
+
+import sailpoint.object.Filter;
+import sailpoint.object.Identity;
+import sailpoint.object.QueryOptions;
+import sailpoint.tools.GeneralException;
+import sailpoint.tools.Util;
+  
+  
+  /**
+	 * Utility method to get configured LDAP environment from Sailpoint context.
+	 * Returned environment is ready to pass to the
+	 * {@link javax.naming.directory.InitialDirContext#InitialDirContext(Hashtable) new InitialDirContext(Hashtable<?,
+	 * ?> environment)}
+	 * constructor.
+	 *
+	 * @param applicationName
+	 * @param context
+	 *            - current SailPointContext
+	 * @return configured LDAP environment
+	 * @throws GeneralException
+	 *             if application not found in SailPointContext by applicationName
+	 *
+	 * @author Pankaj BC- November 2017
+	 */
+	public static Hashtable getLdapEnvironment(String applicationName, SailPointContext context) throws GeneralException {
+		Application app = context.getObjectByName(Application.class, applicationName);
+		String bindDN = app.getAttributes().getString("user");
+		String pword = app.getAttributes().getString("password");
+		String host = app.getAttributes().getString("host");
+		String port = app.getAttributes().getString("port");
+		Hashtable ldapEnv = new Hashtable();
+		ldapEnv.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+		ldapEnv.put(Context.PROVIDER_URL, "ldap://" + host + ":" + port);
+		ldapEnv.put(Context.SECURITY_AUTHENTICATION, "simple");
+		ldapEnv.put(Context.SECURITY_PRINCIPAL, bindDN);
+		ldapEnv.put(Context.SECURITY_CREDENTIALS, context.decrypt(pword));
+		
+		return ldapEnv;
+	}
+
+	/**
+	 * Utility method to get AD environments from Sailpoint context.
+	 *
+	 * @param adApplicationName
+	 *            - Active Directory application name
+	 * @param context
+	 *            - current SailPointContext
+	 * @return baseDN to AD environment Map
+	 * @throws GeneralException
+	 *             if application not found by applicationName
+	 *
+	 * @author  Pankaj BC- November 2017
+	 */
+
+  public static Map getActiveDirectoryEnvironments(String adApplicationName, SailPointContext context)
+			throws GeneralException {
+		Map dnToDomainEnvironmentMap = new HashMap();
+		Application appAD = context.getObjectByName(Application.class, adApplicationName);
+		if (appAD != null) {
+			sailpoint.object.Attributes adAppAttrs = appAD.getAttributes();
+			if (adAppAttrs != null) {
+				
+				List configs = adAppAttrs.getList("domainSettings");
+				for (Map config : configs) {
+					String bindDN = (String) config.get("user");
+					String pword = (String) config.get("password");
+					String domainDN = (String) config.get("domainDN");
+					
+					List servers = (List) config.get("servers");
+					String host = servers.iterator().next();
+					
+					String port = (String) config.get("port");
+					if (domainDN.toLowerCase().startsWith("dc=cob,dc=")) {
+						port = "3268";
+					}
+					Hashtable ldapEnv = new Hashtable();
+					ldapEnv.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+					ldapEnv.put(Context.PROVIDER_URL, "ldap://" + host + ":" + port);
+					ldapEnv.put(Context.REFERRAL, "follow");
+					ldapEnv.put(Context.SECURITY_AUTHENTICATION, "simple");
+					ldapEnv.put(Context.SECURITY_PRINCIPAL, bindDN);
+					ldapEnv.put(Context.SECURITY_CREDENTIALS, context.decrypt(pword));
+
+					dnToDomainEnvironmentMap.put(domainDN, ldapEnv);
+				}
+			}
+		}
+		return dnToDomainEnvironmentMap;
+	}
+	
+	public static Hashtable getADEnvironmentForDistinguishedName(String distinguishedName, SailPointContext context)
+			throws GeneralException, InvalidNameException {
+		Hashtable adEnv = null;
+		Map adEnvironments = cobUtils.getActiveDirectoryEnvironments(IQApplication.ACTIVE_DIRECTORY, context);
+		if (adEnvironments == null) {
+			throw new GeneralException(IQApplication.ACTIVE_DIRECTORY + " environment not found in Sailpoint Custom setup.");
+		} else {
+			String baseDN = cobUtils.getBaseDN(distinguishedName);
+			adEnv = adEnvironments.get(baseDN);
+		}
+		return adEnv;
+	}
+	
+	public static boolean areEqualIgnoreCaseNullSafe(String string1, String string2) {
+		if (string1 == string2) {
+			return true;
+		} else if (string1 == null) {
+			return string2 == null;
+		} else {
+			return string1.equalsIgnoreCase(string2);
+		}
+	}
+	
+	public static boolean isCollectionHasStringIgnoreCase(Collection parCollection, String parString) {
+		boolean result = false;
+		if (parCollection != null) {
+			for (String element : parCollection) {
+				result = areEqualIgnoreCaseNullSafe(element, parString);
+				if (result) {
+					break;
+				}
+			}
+		}
+		//
+		return result;
+	}
+	
+	
+
+  public static boolean isMailInIIQ(String mail, SailPointContext context) throws GeneralException {
+		boolean isMailInIIQ = false;
+		QueryOptions qo = new QueryOptions();
+		qo.addFilter(Filter.ignoreCase(Filter.eq("email", mail)));
+		isMailInIIQ = !Util.isEmpty(context.getObjects(Identity.class, qo));
+		//
+		return isMailInIIQ;
+  }
+  
+  public static boolean isArrayHasStringIgnoreCase(String[] parArray, String parString) {
+		boolean result = false;
+		if (parArray != null) {
+			for (String element : parArray) {
+				result = areEqualIgnoreCaseNullSafe(element, parString);
+				if (result) {
+					break;
+				}
+			}
+		}
+		//
+		return result;
+	}
+	
+	public static boolean isStartWithOneOfThePrefixesIC(String[] prefixes, String str) {
+		boolean result = false;
+		if (prefixes != null) {
+			for (String prefix : prefixes) {
+				result = isStartWithPrefixIgnoreCaseNullSafe(prefix, str);
+				if (result) {
+					break;
+				}
+			}
+		}
+		//
+		return result;
+	}
+
+	public static boolean isStartWithPrefixIgnoreCaseNullSafe(String prefix, String str) {
+		boolean result = false;
+		if (prefix != null && str != null) {
+			result = str.toLowerCase().startsWith(prefix.toLowerCase());
+		}
+		//
+		return result;
+	}
+
+	public static String getLdapTime(Calendar cal) {
+		DateFormat df = new SimpleDateFormat("yyyyMMddHHmmss'Z'");
+		df.setTimeZone(TimeZone.getTimeZone("GMT"));
+		//
+		return df.format(cal.getTime());
+	}
+	
+	/**
+	 *
+	 * @param str
+	 * @returns
+	 * 			A copy of the string, with whitespace normalized by
+	 *          stripping leading and trailing whitespace and replacing sequences of
+	 *          whitespace characters by a single space.
+	 *
+	 * @author  Pankaj BC- November 2017
+	 */
+	public static String trimAndNormalizeWhiteSpaces(String str) {
+		if (str == null) {
+			return str;
+		} else {
+			return str.trim().replaceAll("\\s{2,}", " ");
+		}
+	}
+
+	private final static String[] commonSuffixes = new String[] { " senior", " sr.", " sr", " junior", " jr.", " jr", " viii", " vii", " iii", " ii",
+			" iv", " vi", " ix", " i", " v", " x" };
+
+	/**
+	 * Removes post fix salutations like Jr., Sr., III from name.
+	 *
+	 * @param lastName
+	 * @returns {java.lang.String} name
+	 *
+	 * @author  Pankaj BC- November 2017
+	 */
+	private static String trimCommonSuffixes(String lastName) {
+		String result = null;
+		if (lastName != null) {
+			result = lastName.toLowerCase();
+			if (lastName.length() > 2) {
+				for (String commonSuffixe : commonSuffixes) {
+					if (result.endsWith(commonSuffixe)) {
+						result = result.replaceAll(commonSuffixe, "");
+						break;
+					}
+				}
+			}
+		}
+		//
+		return result;
+	}
+
+	private static final String[][] cp = new String[][] { new String[] { "de la ", "dela" }, new String[] { "dela ", "dela" },
+			new String[] { "del ", "del" }, new String[] { "da ", "da" }, new String[] { "dos ", "dos" }, new String[] { "le ", "le" },
+			new String[] { "de ", "de" }, new String[] { "van ", "van" }, new String[] { "st ", "st" }, new String[] { "st. ", "st" },
+			new String[] { "di ", "di" }, new String[] { "von ", "von" }, new String[] { "du ", "du" } };
+
+	/**
+	 * Adds common prefix to name by removing space that separates common prefix
+	 * from it.
+	 *
+	 * @param lastName
+	 * @returns {java.lang.String} name
+	 *
+	 * @author  Pankaj BC- November 2017
+	 */
+	private static String mergeCommonPrefixes(String lastName) {
+		String result = null;
+		if (lastName != null) {
+			result = lastName.toLowerCase();
+			if (lastName.length() > 2) {
+				for (String[] element : cp) {
+					int idx = result.indexOf(element[0]);
+					if (idx == -1) {
+						continue;
+					} else if (idx == 0 || result.charAt(idx - 1) == ' ') {
+						result = result.replace(element[0], element[1]);
+						break;
+					}
+				}
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Extracts first name from givenName attribute even if it contains multiple names.
+	 * Removes all non word characters except dash from result and convert it to lower case.
+	 * Null safe
+	 *
+	 * @param givenName
+	 * @return first name in lower case
+	 *
+	 * @author  Pankaj BC- November 2017
+	 */
+	public static String getFirstNameLowerCase(String givenName) {
+		String result = givenName;
+		if (result != null) {
+			result = trimAndNormalizeWhiteSpaces(result).toLowerCase();
+			if (result.length() &lt; 3) {
+				int firstSpace = result.length();
+				for (int i = 1; i &lt; result.length(); i++) {
+					if (java.lang.Character.isWhitespace(result.charAt(i))) {
+						firstSpace = i;
+						break;
+					}
+				}
+				result = result.substring(0, firstSpace);
+			}
+		}
+		//
+		return normalizeName(result);
+	}
+
+	/**
+	 * Extracts first name from givenName even if it contains multiple names.
+	 * Removes all non word characters except dash from result and convert it
+	 * to Start Case (First character in upper case - other in lower case).
+	 * Null safe
+	 *
+	 * @param givenName
+	 * @return first name in Start Case
+	 *
+	 *
+	 * @author  Pankaj BC- November 2017
+	 */
+	public static String getFirstNameStartCase(String givenName) {
+		return toStartCase(getFirstNameLowerCase(givenName));
+	}
+
+	/**
+	 * Extracts last name from name even if it contains multiple names, removes post fix
+	 * salutations like Jr., Sr., III, merges common prefixes (de, van, von) to the last name.
+	 * Removes all non word characters except dash from result and convert it
+	 * to lower case.
+	 * Null safe
+	 *
+	 * @param sn
+	 * @return last name in lower case
+	 *
+	 * @author  Pankaj BC- November 2017
+	 */
+	public static String getLastNameLowerCase(String sn) {
+		String result = null;
+		if (sn != null) {
+			result = trimAndNormalizeWhiteSpaces(sn).toLowerCase();
+			result = trimCommonSuffixes(result);
+			result = mergeCommonPrefixes(result);
+			if (result.length() > 2) {
+				int lastSpace = -1;
+				for (int i = result.length() - 2; i >= 0; i--) {
+					if (java.lang.Character.isWhitespace(result.charAt(i))) {
+						lastSpace = i;
+						break;
+					}
+				}
+				result = result.substring(lastSpace + 1);
+			}
+		}
+		return normalizeName(result);
+	}
+
+	/**
+	 * Extracts last name from name even if it contains multiple names, removes post fix
+	 * salutations like Jr., Sr., III, merges common prefixes (de, van, von) to the last name.
+	 * Removes all non word characters except dash from result and convert it
+	 * to Start Case (First character in upper case - other in lower case).
+	 * Null safe
+	 *
+	 * @param lastName
+	 * @return last name in Start case
+	 *
+	 * @author  Pankaj BC- November 2017
+	 */
+	public static String getLastNameStartCase(String lastName) {
+		return toStartCase(getLastNameLowerCase(lastName));
+	}
+
+	/**
+	 * Converts word to Start Case (First character in upper case - other in lower case).
+	 * Dash recognized as a beginning of a new word.
+	 * Examples:
+	 * orellana-aguilar will be converted to Orellana-Aguilar
+	 * Ave gaile T. Dela pena will be converted to Ave Gaile T. Dela Pena
+	 * (susan) will be converted to (Susan)
+	 *
+	 * @param word
+	 * @return Start Case word
+	 *
+	 * @author  Pankaj BC- November 2017
+	 */
+	public static String toStartCase(String word) {
+		String result = null;
+		if (word != null) {
+			if (word.length() &lt; 2) {
+				result = word.toUpperCase();
+			} else {
+				boolean wordBeginning = true;
+				StringBuilder sb = new StringBuilder();
+				for (int i = 0; i &lt; word.length(); i++) {
+					Character ch = word.charAt(i);
+					if (Character.isLetterOrDigit(ch)) {
+						if (wordBeginning) {
+							sb.append(Character.toUpperCase(ch));
+							wordBeginning = false;
+						} else {
+							sb.append(Character.toLowerCase(ch));
+						}
+					} else {
+						sb.append(ch);
+						if (!wordBeginning) {
+							wordBeginning = Character.getType(ch) == Character.DASH_PUNCTUATION || Character.getType(ch) == Character.SPACE_SEPARATOR;
+						}
+					}
+				}
+				result = sb.toString();
+			}
+		}
+		//
+		return result;
+	}
+
+	/**
+	 * @param name
+	 * @returns A copy of the name with all non-word characters removed except dash and space.
+	 *
+	 * @author Pankaj BC- November 2017
+	 */
+	public static String normalizeName(String name) {
+		if (name == null) {
+			return name;
+		} else {
+			return name.replaceAll("[^a-zA-Z0-9- ]", "");
+		}
+	}
+
+	// Alphabet upper case
+	private static final String[] AUC = new String[] { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S",
+			"T", "U", "V", "W", "X", "Y", "Z" };
+
+	/**
+	 * @param sdsCNs
+	 *            collection of CN attributes from SDS
+	 * @param sn
+	 *            surname attribute from SDS
+	 * @return array of common names for creating user object in AD
+	 *
+	 * @author Pankaj BC- November 2017
+	 */
+	public static String[] getArrayOfCommonNames(Collection sdsCNs, String sn) {
+		Collection commonNames = new LinkedHashSet();
+		if (sdsCNs != null) {
+			String sdsCN = sdsCNs.iterator().next();
+			if (sdsCN.contains(",")) {
+				String[] tokens = sdsCN.split(",");
+				StringBuilder sb = new StringBuilder();
+				for (String token : tokens) {
+					if (sb.length() &gt; 0) {
+						sb.insert(0, " ");
+					}
+					sb.insert(0, token.trim());
+				}
+				sdsCN = sb.toString();
+			}
+			sdsCN = sdsCN.replace(".", " ");
+			sdsCN = trimAndNormalizeWhiteSpaces(sdsCN);
+			sdsCN = trimCommonSuffixes(sdsCN);
+			sdsCN = mergeCommonPrefixes(sdsCN);
+			sdsCN = toStartCase(sdsCN);
+			sdsCN = normalizeName(sdsCN);
+			//
+			String lastName = getLastNameStartCase(sn);
+			String mi = null;
+			LinkedHashSet givenNamesSet = new LinkedHashSet();
+			Collection names = Arrays.asList(sdsCN.split(" "));
+			Iterator namesItr = names.iterator();
+			while (namesItr.hasNext()) {
+				String name = namesItr.next();
+				if (namesItr.hasNext()) {
+					if (name.length() == 1 && names.size() > 2) {
+						mi = name + ".";
+					} else {
+						givenNamesSet.add(name);
+					}
+				}
+			}
+			//
+			LinkedList givenNames = new LinkedList(givenNamesSet);
+			while (true) {
+				commonNames.add(makeCommonName(givenNames, mi, lastName));
+				if (givenNames.size() > 1) {
+					givenNames.removeLast();
+				} else {
+					break;
+				}
+			}
+			if (mi == null && givenNames.size() > 0) {
+				String firstName = givenNames.getFirst();
+				mi = new String(firstName.charAt(0) + ".");
+				givenNames = new LinkedList(givenNamesSet);
+				while (true) {
+					commonNames.add(makeCommonName(givenNames, mi, lastName));
+					if (givenNames.size() > 1) {
+						givenNames.removeLast();
+					} else {
+						break;
+					}
+				}
+			}
+			for (String letter : AUC) {
+				String initial = letter + ".";
+				if (!initial.equalsIgnoreCase(mi)) {
+					givenNames = new LinkedList(givenNamesSet);
+					while (true) {
+						commonNames.add(makeCommonName(givenNames, initial, lastName));
+						if (givenNames.size() > 1) {
+							givenNames.removeLast();
+						} else {
+							break;
+						}
+					}
+				}
+			}
+		}
+		//
+		return commonNames.toArray(new String[commonNames.size()]);
+	}
+
+	private static String makeCommonName(List givenNames, String mi, String lastName) {
+		StringBuilder sb = new StringBuilder();
+		for (String givenName : givenNames) {
+			sb.append(givenName).append(" ");
+		}
+		if (mi != null) {
+			sb.append(mi).append(" ");
+		}
+		sb.append(lastName);
+		//
+		return sb.toString().trim();
+	}
+
+	private static final String STRING_OF_ALPHA_NUM_CHARS = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+	private static String generateRandomDigit() {
+		return Integer.toString(new java.util.Random().nextInt(10));
+	}
+
+	private static String generateRandomAlphaNumericSymbol() {
+		return Character.toString(STRING_OF_ALPHA_NUM_CHARS.charAt(new java.util.Random().nextInt(36)));
+	}
+
+	private static final Boolean[] SAMA_IS_DIGIT_ONLY = new Boolean[] { false, false, true, false, true, false, false };
+	private static final Integer SAMA_LENGTH = SAMA_IS_DIGIT_ONLY.length;
+
+	private static String generateRandomSamAccountName(String prefix) {
+		String result = prefix == null ? "" : prefix;
+		Integer reqdLength = SAMA_LENGTH;
+		while (result.length() &lt; reqdLength) {
+			if (SAMA_IS_DIGIT_ONLY[result.length()]) {
+				result += generateRandomDigit();
+			} else {
+				result += generateRandomAlphaNumericSymbol();
+			}
+		}
+		return result;
+	}
+
+	public static List generateSAMAccountNames(String givenName, String sn) {
+		Set result = new LinkedHashSet();
+		String firstName = "";
+		if (givenName != null) {
+			firstName = getFirstNameLowerCase(givenName).replaceAll("\\W", "");
+			if (firstName.length() > 6) {
+				firstName = firstName.substring(0, 6);
+			}
+		}
+		String lastname = "";
+		if (sn != null) {
+			lastname = getLastNameLowerCase(sn).replaceAll("\\W", "");
+			if (lastname.length() > 6) {
+				lastname = lastname.substring(0, 6);
+			}
+		}
+		String sAMAccountName = "";
+		if (firstName.length() > 0 && lastname.length() > 0) {
+			for (int i = 1; i <= firstName.length(); i++) {
+				sAMAccountName = firstName.substring(0, i) + lastname;
+				if (sAMAccountName.length() > 7) {
+					sAMAccountName = sAMAccountName.substring(0, 7);
+				}
+				if (sAMAccountName.length() > 2) {
+					result.add(sAMAccountName);
+				}
+			}
+		}
+
+		if (firstName.length() < 5) {
+			String initialStr = firstName + lastname;
+			if (initialStr.length() > 6) {
+				initialStr = initialStr.substring(0, 6);
+			}
+			for (int i = initialStr.length(); i > firstName.length(); i--) {
+				sAMAccountName = initialStr.substring(0, i);
+				if (sAMAccountName.length() > 2) {
+					result.add(sAMAccountName);
+				} else {
+					break;
+				}
+			}
+		}
+
+		// Generate random sAMAAccountNames also
+		String prefix = "";
+		if (Util.isNotNullOrEmpty(firstName)) {
+			prefix = firstName;
+		} else if (Util.isNotNullOrEmpty(lastname)) {
+			prefix = lastname;
+		}
+		if (prefix.length() > 2) {
+			prefix = prefix.substring(0, 2);
+		}
+		int size = 25 - result.size();
+		for (int i = 0; i < size; i++) {
+			result.add(generateRandomSamAccountName(prefix));
+		}
+		return new ArrayList(result);
+	}
+
+	public static List generateVendorSAMAccountNames(String givenName, String sn) {
+		List sAMAccountNames = new ArrayList();
+		List names = generateSAMAccountNames(givenName, sn);
+		for (String name : names) {
+			sAMAccountNames.add("v-" + name);
+		}
+		//
+		return sAMAccountNames;
+	}
+
+	public static Collection cobRetrieveAccountsFromADEnvironment(String searchFilter, String[] attributesToReturn, String baseDN,
+			Hashtable env) throws GeneralException, NamingException {
+		Collection searchResults = new ArrayList();
+		DirContext adCtx = null;
+		NamingEnumeration response = null;
+		try {
+			//String baseDN = adEnv.getKey();
+			adCtx = new InitialDirContext(env);
+			SearchControls searchCtls = new SearchControls();
+			searchCtls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+			searchCtls.setReturningAttributes(attributesToReturn);
+			searchCtls.setReturningObjFlag(false);
+			response = adCtx.search(baseDN, searchFilter, searchCtls);
+			while (response.hasMore()) {
+				searchResults.add(response.next());
+			}
+		} catch (Throwable t) {
+			t.printStackTrace();
+			throw t;
+		} finally {
+			if (response != null) {
+				try {
+					response.close();
+				} catch (NamingException ignore) {//NOPMD - suppress PMD warning (ignore Exception on context close)
+				}
+			}
+			if (adCtx != null) {
+				try {
+					adCtx.close();
+				} catch (NamingException ignore) {//NOPMD - suppress PMD warning (ignore Exception on context close)
+				}
+			}
+		}
+
+		return searchResults;
+	}
+
+	public static Collection cobRetrieveAccountsFromADEnvironment(String searchFilter, String[] attributesToReturn,
+			Entry adEnv) throws GeneralException, NamingException {
+
+		return cobRetrieveAccountsFromADEnvironment(searchFilter, attributesToReturn, adEnv.getKey(), adEnv.getValue());
+	}
+
+	private static boolean isInAD(String searchFilter, SailPointContext context) throws GeneralException, NamingException {
+		boolean isSAMAccountNameInAD = false;
+		Map adEnvironments = getActiveDirectoryEnvironments("Active_Directory", context);
+		for (Entry adEnv : adEnvironments.entrySet()) {
+			Collection results = cobRetrieveAccountsFromADEnvironment(searchFilter, new String[] { ADAttribute.SAMACCOUNTNAME }, adEnv);
+			isSAMAccountNameInAD = results.size() > 0;
+			if (isSAMAccountNameInAD) {
+				break;
+			}
+		}
+		return isSAMAccountNameInAD;
+	}
+
+	private static boolean isSAMAccountNameInAD(String sAMAccountName, SailPointContext context) throws GeneralException, NamingException {
+		String searchFilter = "(" + ADAttribute.SAMACCOUNTNAME + "=" + sAMAccountName + ")";
+		//
+		return isInAD(searchFilter, context);
+	}
+
+	//This function is for Sailpoint ver. 7.1 and up.
+	//It is not backward compatible with previous versions because Application xml structure is different between 7.1 and earliest versions.
+	private static boolean isSAMAccountNameInGID(String sAMAccountName, SailPointContext context) throws GeneralException, NamingException {
+		boolean isSAMAccountNameInGID = false;
+		String searchFilter = "(" + ADAttribute.SAMACCOUNTNAME + "=" + sAMAccountName + ")";
+		Map adEnvironments = getActiveDirectoryEnvironments("GID", context);
+		for (Entry adEnv : adEnvironments.entrySet()) {
+			Collection results = cobRetrieveAccountsFromADEnvironment(searchFilter, new String[] { ADAttribute.SAMACCOUNTNAME }, adEnv);
+			isSAMAccountNameInGID = results.size() > 0;
+			if (isSAMAccountNameInGID) {
+				break;
+			}
+		}
+		//
+		return isSAMAccountNameInGID;
+	}
+
+	private static boolean isInEDS(String searchFilter, SailPointContext context) throws GeneralException, NamingException {
+		boolean isInEDS = false;
+		InitialDirContext ctx = null;
+		NamingEnumeration response = null;
+		try {
+			Hashtable ldapEnv = getLdapEnvironment("EDS", context);
+			ctx = new InitialDirContext(ldapEnv);
+			SearchControls searchCtls = new SearchControls();
+			searchCtls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+			searchCtls.setReturningAttributes(new String[] { EDSAttribute.UID });
+			searchCtls.setReturningObjFlag(false);
+			response = ctx.search("ou=users,dc=cob,dc=com", searchFilter, searchCtls);
+			isInEDS = response.hasMore();
+		} catch (Throwable t) {
+			t.printStackTrace();
+			throw t;
+		} finally {
+			if (response != null) {
+				try {
+					response.close();
+				} catch (NamingException ignore) {//NOPMD - suppress PMD warning (ignore Exception on context close)
+				}
+			}
+			if (ctx != null) {
+				try {
+					ctx.close();
+				} catch (NamingException ignore) {//NOPMD - suppress PMD warning (ignore Exception on context close)
+				}
+			}
+		}
+		//
+		return isInEDS;
+	}
+	
+  ]]></Source>
+</Rule>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-SAML-SSO" type="SAMLCorrelation">
+  <Description>A rule used to map SAML name Id and attributes to an Identity.</Description>
+  <Signature returnType="SailPointObject">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="assertionAttributes">
+        <Description>
+          A map where the key is a string and value is a string. The map will always contain
+          a key NameId with the value being the name Id sent by the Identity Provider.  All other
+          SAML assertion attributes will be included in the map.
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="identity Or Link">
+        <Description>
+          The Identity or Link that has been authenticated via SAML SSO.
+          Returning the Link is the preferred way as it provides the
+          exact account back to the server side which can be helpful
+          when collecting authentication for electronic signatures.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[// Imports
+            import sailpoint.object.Identity;
+import java.util.*;
+		
+		import sailpoint.object.*;
+		import java.lang.*;
+
+            // Making a BIG assumption here that the nameid-format is unspecified/persitent
+
+            // Get the nameId from the assertionAttributes
+            String nameId = (String)assertionAttributes.get("uid");
+System.out.println("UID nameId:"+nameId);
+            Identity ident = null;
+
+            if(nameId != null) {
+                // Lookup the identity based on nameId
+           Filter groupFilter = Filter.ignoreCase(Filter.eq("uid", nameId));
+	        QueryOptions qo1 = new QueryOptions();
+	        qo1.addFilter(groupFilter);
+	        Iterator identities = null;
+			try {
+				identities = context.search(Identity.class,qo1);
+			} catch (GeneralException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+	        if(identities != null && identities.hasNext())
+	        {
+	        	
+	        while (identities.hasNext()) {
+
+	                 ident = (Identity)identities.next();
+	                System.out.println("Identity Found: "+ident.getDisplayName() );
+	        }
+	       
+
+	        } //ending while loop for identities
+else
+{
+System.out.println("Unable to login user. Uid mapping Identity not found: "+nameId);
+}
+	
+	}
+else
+{
+System.out.println("SSO contract does not contain UID attribute. Please check with administrator "+nameId);
+}
+
+
+            return ident;]]></Source>
+</Rule>

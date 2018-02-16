@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE sailpoint PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<sailpoint><Rule language="beanshell" name="COB-Rule-IdValidation" type="Validation">
+  <Description>This rule is used to validate the Field values on a provisioning plan.</Description>
+<Signature returnType="Object">
+<Inputs>
+<Argument type="identity">
+<Description>
+The Identity object being provisioned.
+</Description>
+</Argument><Argument type="app">
+<Description>
+The Application object being processed.
+</Description>
+</Argument><Argument type="form">
+<Description>
+The Form object being processed.
+</Description>
+</Argument><Argument type="field">
+<Description>
+The Field object being validated.
+</Description>
+</Argument><Argument type="value">
+<Description>
+The Object representing the field value.
+</Description>
+</Argument></Inputs>
+<Returns>
+<Argument type="value">
+<Description>
+An Object (possibly a Collection) of messages resulting from the
+          validation rule.
+</Description>
+</Argument></Returns>
+</Signature>
+<!--ReferencedRules>
+  <Reference class="sailpoint.object.Rule" name=""/>
+</ReferencedRules-->
+  <Source><![CDATA[
+/*******
+ *                                                                              *
+ * Generated: Wed Feb 14 13:46:16 EST 2018                                      *
+ * Rule: Validation Template                                                    *
+ * Description: Validation Template                                             *
+ * Inputs:                                                                      *
+ *     identity - The Identity object being provisioned.                        *
+ *     app - The Application object being processed.                            *
+ *     form - The Form object being processed.                                  *
+ *     field - The Field object being validated.                                *
+ *     value - The Object representing the field value.                         *
+ * Returns:                                                                     *
+ *     value - An Object (possibly a Collection) of messages resulting from the *
+ *           validation rule.                                                   *
+ ******/
+import sailpoint.object.Identity;
+
+Identity ident =context.getObjectByName(Identity.class, value);
+if(ident != null){
+	return null;
+	}else{
+	
+	return "This employee/user ID does not exist.";
+	}
+  ]]></Source>
+</Rule>
+</sailpoint>

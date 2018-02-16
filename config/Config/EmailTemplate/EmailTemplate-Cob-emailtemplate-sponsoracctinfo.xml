@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE EmailTemplate PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<EmailTemplate name="COB-EmailTemplate-SponsorAcctInfo">
+  <Body>
+&lt;html&gt;
+&lt;body&gt;
+&lt;span style="color: rgb(51, 51, 51); font-family: &amp;quot;Open Sans&amp;quot;, &amp;quot;Helvetica Neue&amp;quot;, Helvetica, Arial, sans-serif; font-size: 12px;"&gt;
+Hello, &lt;br&gt;
+&lt;br&gt;
+
+This is an auto-generated E-Mail, please do not reply to this E-Mail. &lt;br&gt;
+&lt;br&gt;
+
+This is a confirmation that the requested $accountType account has been created with the following information: &lt;br&gt;
+&lt;br&gt;
+
+&lt;b&gt;Requestor Name :&lt;/b&gt; $requesterDisplayName &lt;br&gt;
+&lt;br&gt;
+
+&lt;b&gt;Name :&lt;/b&gt; $firstName $lastName &lt;br&gt;
+&lt;br&gt;
+
+&lt;b&gt;Computer (AD) Login ID :&lt;/b&gt; $userName &lt;br&gt;
+&lt;br&gt;
+
+&lt;b&gt;Email :&lt;/b&gt; $email &lt;br&gt;
+&lt;br&gt;
+
+&lt;b&gt;Contractor End Date :&lt;/b&gt; $spTools.formatDate($endDate,"yyyy-MM-dd") &lt;br&gt;
+&lt;br&gt;
+
+The password for this account has been sent in a separate e-mail to the owner of the account. &lt;br&gt;
+&lt;br&gt;
+
+
+&lt;br&gt;
+&lt;br&gt;
+
+Sincerely, &lt;br&gt;
+IAM Team,&lt;br&gt;
+DOIT
+
+&lt;br&gt;
+&lt;br&gt;
+&lt;br&gt;
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - &lt;br&gt;
+E-Mail Disclaimer : &lt;/span&gt;
+&lt;font color="#333333" face="Open Sans, Helvetica Neue, Helvetica, Arial, sans-serif"&gt;
+&lt;span style="font-size: 12px;"&gt;The information contained in this communication, including any attachments, is intended solely for the use of the individual or entity to whom it is addressed and others authorized to receive it. It may contain confidential or legally privileged information. If you are not the intended recipient you are hereby notified that any disclosure, copying, distribution or taking any action in reliance on the contents of this information is strictly prohibited and may be unlawful. If you have received this communication in error, please notify us immediately by responding to this email and then delete it from your system. The sender is neither liable for the proper and complete transmission of the information contained in this communication nor for any delay in its receipt.&lt;/span&gt;
+&lt;/font&gt;
+&lt;div style=""&gt;
+&lt;font color="#333333" face="Open Sans, Helvetica Neue, Helvetica, Arial, sans-serif"&gt;
+&lt;span style="font-size: 12px;"&gt;
+&lt;br&gt;&amp;nbsp;- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - &lt;/span&gt;
+&lt;/font&gt;
+&lt;br&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</Body>
+  <Description>Email Template description.</Description>
+  <Subject>Completed : $accountType Account Creation Request for $firstName $lastName (1 of 2 emails)</Subject>
+</EmailTemplate>

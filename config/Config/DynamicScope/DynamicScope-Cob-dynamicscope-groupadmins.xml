@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE DynamicScope PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<DynamicScope name="COB-DynamicScope-GroupAdmins">
+  <Description>This will give 'Group Management' access only to the group admins </Description>
+  <Selector>
+    <IdentitySelector>
+      <PopulationRef>
+        <Reference class="sailpoint.object.GroupDefinition" name="COB-Pop-GroupAdmins"/>
+      </PopulationRef>
+    </IdentitySelector>
+  </Selector>
+</DynamicScope>

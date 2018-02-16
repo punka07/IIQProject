@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE QuickLink PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<QuickLink action="external" category="Manage" cssClass="quicklink-browse-google" messageKey="Browse Google" name="urlQuickLink" ordering="1">
+  <Attributes>
+    <Map>
+      <entry key="url" value="http://www.google.com"/>
+    </Map>
+  </Attributes>
+</QuickLink>

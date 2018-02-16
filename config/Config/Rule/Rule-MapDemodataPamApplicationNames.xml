@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Map Demodata PAM Application Names" type="ResourceObjectCustomization">
+  <Description>
+    This rule will map "source" names on PAM objects to the name of the corresponding
+    Application in IIQ.
+  </Description>
+  <Signature>
+    <Inputs>
+      <Argument name="context">
+        <Description>
+           A SailPointContext object used if its necessary
+           to query objects from the database.
+        </Description>
+      </Argument>
+      <Argument name="object">
+        <Description>
+          The ResourceObject built by the connector.
+        </Description>
+      </Argument>
+      <Argument name="application">
+        <Description>
+          Application that references the connector
+        </Description>
+      </Argument>
+      <Argument name="connector">
+        <Description>
+          The connector object
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="A ResourceObject">
+        <Description>
+          The updated resource object.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[
+    
+      // NOTE: You can replace the values in the map below to match your deployment configuration.
+      // The name on the left side is the name of the directory in the PAM application.
+      // The name on the right side is the name of the corresponding application in IIQ.
+      Map applicationMappings = new HashMap();
+      applicationMappings.put("PAM Active Directory", "ADDirectDemodata");
+      applicationMappings.put("PAM Corp Directory", "Active_Directory");
+
+      // Use the mapped name if available.
+      String source = (String) object.getAttribute("source");
+      if (null != source) {
+          String mapped = applicationMappings.get(source);
+          if (null != mapped) {
+              object.put("source", mapped);
+          }
+      }
+
+      return object;
+    
+  ]]></Source>
+</Rule>

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-FutureHire-DisableRefresh" type="Refresh">
+  <Description>
+   Rule to disable furure hires
+  </Description>
+  <Signature>
+    <Inputs>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to
+          access the database.
+        </Description>
+      </Argument>
+      <Argument name="environment" type="java.util.Map">
+        <Description>
+          The task agruments passed to the aggregation or refresh task.
+        </Description>
+      </Argument>
+      <Argument name="identity" type="Identity">
+        <Description>
+          The identity that is being updated.
+        </Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Source><![CDATA[
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import org.apache.log4j.Logger;  
+import org.apache.log4j.Level;  
+import sailpoint.object.Identity;
+import java.util.*;
+
+Logger log=Logger.getLogger("cob.rule.refresh.futurehire.disable");
+log.debug("----Rule Start----");
+  
+ /*******
+ *                                                                                 *
+ * Generated: Wed Jan 17 14:30:08 EST 2018                                         *
+ * Rule: Identity Refresh Template                                                 *
+ * Description: Identity Refresh Template                                          *
+ * Inputs:                                                                         *
+ *     environment - The task arguments passed to the aggregation or refresh task. *
+ *     identity - The identity that is being updated.                              *
+ * Returns:                                                                        *
+ ******/
+  
+  //We are going to first check the start date set for the 
+  //sponsorede account and disable if it's in the future date
+  
+ //Let's check the start date
+        String identityName=identity.getName();
+        String startDateStr= identity.getStringAttribute("cobHireDate");
+       if(startDateStr != null && identity.isInactive()){
+        Date today = new Date();
+        Date startDate= new java.text.SimpleDateFormat("yyyy-MM-dd").parse(startDateStr);
+        if(today.before(startDate)){
+           //if this is the case, go ahead and launch deletion workflow
+            Map launchArgsMap = new HashMap();
+            launchArgsMap.put("identityName", identityName);
+            
+/*****
+ *Next we are creating WorkflowLaunch *
+ *and setting values                  *
+ ****/
+            WorkflowLaunch wflaunch = new WorkflowLaunch();
+            Workflow wf = null;
+            try {
+                wf = (Workflow) context.getObjectByName(Workflow.class, "COB-Workflow-FutureHire-Disable");
+            } catch (GeneralException e) {
+                e.printStackTrace();
+            }
+            wflaunch.setWorkflowName(wf.getName());
+            wflaunch.setWorkflowRef(wf.getName());
+            wflaunch.setCaseName("COB-Workflow-FutureHire-Disable");
+            wflaunch.setVariables(launchArgsMap);
+/*****
+ *Next we are creating Workflower             *
+ *and launching workflow from WorkflowLaunch  *
+ *****/                                       
+            Workflower workflower = new Workflower(context);
+
+
+            WorkflowLaunch launch = null;
+            try {
+                launch = workflower.launch(wflaunch);
+            } catch (GeneralException e) {
+                e.printStackTrace();
+            }
+      
+          
+        }
+  }
+  log.debug("----Rule End----");
+    
+  ]]></Source>
+</Rule>

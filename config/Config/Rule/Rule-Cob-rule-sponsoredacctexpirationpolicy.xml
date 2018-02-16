@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-SponsoredAcctExpirationPolicy" type="Policy">
+  <Description>This rule is used to determine if a Policy has been violated on change password dates.</Description>
+  <Signature returnType="PolicyViolation">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="identity">
+        <Description>
+          The Identity being inspected.
+        </Description>
+      </Argument>
+      <Argument name="policy">
+        <Description>
+          The Policy being evaluated.
+        </Description>
+      </Argument>
+      <Argument name="constraint">
+        <Description>
+          The Constraint being evaluated.
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="violation">
+        <Description>
+          The PolicyViolation object.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[
+    
+  import sailpoint.api.Workflower;
+    import sailpoint.object.Application;
+    import sailpoint.object.Custom;
+    import sailpoint.object.Identity;
+    import sailpoint.object.Link;
+    import sailpoint.object.Policy;
+    import sailpoint.object.PolicyViolation;
+    import sailpoint.object.Rule;
+    import sailpoint.object.Workflow;
+    import sailpoint.object.WorkflowLaunch;
+    import java.text.SimpleDateFormat;
+    import java.util.*;
+    import java.util.Calendar;
+    import java.util.Date;
+    import sailpoint.tools.Util;
+
+          PolicyViolation v = new PolicyViolation();
+        String pwdExpReminderDays = "14,7,3,1";
+        Identity identity = context.getObjectByName(Identity.class,"sreddy");
+        if (identity != null) {
+            String identityName = identity.getName();
+            log.warn("identityName::"+identityName);
+            boolean isViolation = false;
+            String expDateStr = "";
+          if(identity.getAttributes().containsKey("cobTermDate") != null){
+             expDateStr=identity.getStringAttribute("cobTermDate");
+             log.warn("expDateStr::"+expDateStr);
+         
+            Date expDate = new java.text.SimpleDateFormat("yyyy-MM-dd").parse(expDateStr);
+            log.warn("expDate::"+expDate);
+            int daysDiff = Util.getDaysDifference(expDate,new Date());
+            log.warn("daysDiff::"+daysDiff);
+            String daysTillExpiration = "";
+            daysTillExpiration =  Integer.toString(daysDiff);
+            log.warn("daysTillExpiration::"+daysTillExpiration);
+            String numDays=null;
+            try{
+             if (daysDiff <= 0 || Util.nullSafeContains(pwdExpReminderDays, daysTillExpiration)) {
+            
+              numDays = daysTillExpiration;
+                log.warn("numDays::"+numDays);
+          }
+            log.warn("numDays::"+numDays);
+            } catch (Exception e) {
+                  log.warn("Error determining sponsored account expiration: " + e.getMessage());
+                }
+           
+           
+            // check value of numDays and determine if violation or notification necessary
+            if (numDays != null) {
+                int pwdExpDays;
+                if (numOfDays instanceof String) {
+                    pwdExpDays = Integer.parseInt((String) numOfDays);
+                } else {
+                    pwdExpDays = (Integer) numOfDays;
+                }
+                if (pwdExpDays < 0) {
+                    isViolation = true;
+
+                }else{
+            
+          
+
+
+            //call workflow without violation
+            HashMap map = new HashMap();
+            map.put("launcher", "spadmin");
+            map.put("identityName", identityName);
+            map.put("targetClass", "sailpoint.object.Identity");
+            Workflower wf = new Workflower(context);
+            Workflow newWorkflow = context.getObjectByName(Workflow.class, "COB-Workflow-SponsoredAccountExpiration-Reminder");
+            if (newWorkflow != null) {
+                WorkflowLaunch wfLaunch = wf.launchSafely(newWorkflow, "Sponsored Account Expiry Reminder for " + identityName, map);
+
+            }
+            }
+            }
+
+            if (isViolation) {
+                v = new PolicyViolation();
+                v.setActive(true);
+                v.setIdentity(identity);
+                v.setPolicy(policy);
+                v.setDescription("Expired sponsored account");
+                v.setStatus(sailpoint.object.PolicyViolation.Status.Open);
+            }
+        }
+        }
+      
+
+    return v;
+    
+    
+  ]]></Source>
+</Rule>

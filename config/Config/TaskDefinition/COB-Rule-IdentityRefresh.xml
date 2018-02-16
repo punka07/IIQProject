@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-IdentityRefresh" type="Refresh">
+  <Description>
+    Example rule to modify the given user that has been aggregated or refreshed.
+  </Description>
+  <Signature>
+    <Inputs>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to
+          access the database.
+        </Description>
+      </Argument>
+      <Argument name="environment" type="java.util.Map">
+        <Description>
+          The task agruments passed to the aggregation or refresh task.
+        </Description>
+      </Argument>
+      <Argument name="identity" type="Identity">
+        <Description>
+          The identity that is being updated.
+        </Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Source>
+
+import java.util.List;
+
+identity.setAttributeAssignments(null);
+    
+  </Source>
+</Rule>

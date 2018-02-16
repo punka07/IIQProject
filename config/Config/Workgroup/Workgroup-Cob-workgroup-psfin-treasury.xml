@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Identity PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Identity name="COB-Workgroup-PSFIN-Treasury" workgroup="true">
+  <Attributes>
+    <Map>
+      <entry key="displayName" value="COB-Workgroup-PSFIN-Treasury"/>
+    </Map>
+  </Attributes>
+  <Description>This workgroup is responsible for approving PSFIN AR/BI role access requests.</Description>
+  <Preferences>
+    <Map>
+      <entry key="workgroupNotificationOption">
+        <value>
+          <WorkgroupNotifationOption>Both</WorkgroupNotifationOption>
+        </value>
+      </entry>
+    </Map>
+  </Preferences>
+</Identity>

@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+ <Form name="COB-Form-IdentityVerification-Confirmation">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Identity Verification Confirmation Form"/>
+          </Map>
+        </Attributes>
+        <Section columns="2" label="Confirm the entered values">
+          <Field columnSpan="1" displayName="Employee/User ID" name="emplId" type="string" value="ref:emplId" readOnly="true"/>
+          <Field columnSpan="1" displayName="Full Name" name="fullName" type="string" value="ref:fullName" readOnly="true"/>
+          <Field columnSpan="1" displayName="Last 4 Digits of SSN" name="ssn" type="string" value="ref:ssn" readOnly="true">
+            <Attributes>
+              <Map>
+                <entry key="hidden">
+                  <value>
+                    <Script>
+                      <Source><![CDATA[
+
+
+if (isEmployee) {
+
+return false;
+
+} else {
+
+return true;
+
+}
+
+]]></Source>
+                    </Script>
+                  </value>
+                </entry>
+              </Map>
+            </Attributes>
+          </Field>
+          <Field columnSpan="2" displayName="Day and Month of Date of Birth" name="dob" type="string" value="ref:dob" readOnly="true">
+            <Attributes>
+              <Map>
+                <entry key="hidden">
+                  <value>
+                    <Script>
+                      <Source><![CDATA[
+
+
+if (isEmployee) {
+
+return true;
+
+} else {
+
+return false;
+
+}
+
+]]></Source>
+                    </Script>
+                  </value>
+                </entry>
+              </Map>
+            </Attributes>
+          </Field>
+        </Section>
+        <Button action="back" label="Back"/>
+        <Button action="next" label="Next"/>
+        <Button action="cancel" label="Cancel"/>
+      </Form>

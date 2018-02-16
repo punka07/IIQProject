@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" libraries="Identity" name="COB-Workflow-EditHDAPGroup">
+  <Variable initializer="string:true" name="transient"/>
+  <Variable name="launcher"/>
+  <Variable name="newGroupDisplayName"/>
+  <Variable name="identityName"/>
+  <Variable name="plan"/>
+  <Variable name="newOwner"/>
+  <Variable name="oldOwner"/>
+  <Variable name="newDescription"/>
+  <Variable name="oldGroupNameDN"/>
+  <Variable name="oldDisplayName"/>
+  <Variable name="oldGroupDescription"/>
+  <Variable name="oldGroupName"/>
+  <Variable initializer="string:true" name="trace"/>
+  <Description>ROFID - Group Edit Form.</Description>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-ROFID-Group-Workflow"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-cobUtils"/>
+    <Reference class="sailpoint.object.Rule" name="cobUtils"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-ProvisioningRuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="COB-Rule-AuditRuleLibrary"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start" posX="28" posY="10">
+    <Transition to="SelectForm"/>
+  </Step>
+  <Step icon="Message" name="SelectForm" posX="115" posY="10">
+    <Approval name="HDAP-SelectGroup-Form-Approval" owner="ref:launcher" return="identityName,oldGroupNameDN" send="launcher">
+      <Form name="HDAP-SelectGroup-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Select Group"/>
+          </Map>
+        </Attributes>
+        <Button action="next" label="Next"/>
+        <Button action="cancel" label="Cancel Request"/>
+        <Section label="Instructions" name="userInstructions" type="text">
+          <Field name="Directions" value="Select a Group you are designated owner of from the drop-down below."/>
+        </Section>
+        <Section columns="1" label="Select a Group">
+          <Field displayName="Group" dynamic="true" name="oldGroupNameDN" required="true" type="ManagedAttribute">
+            <Script>
+              <Source><![CDATA[
+  
+      import sailpoint.object.Identity;
+      import java.util.List;
+      import sailpoint.tools.Util;
+                
+       
+        Identity launcherIdentity = context.getObjectByName(Identity.class, launcher);
+		List launchersWorkgroups = launcherIdentity.getWorkgroups();
+
+		if (launchersWorkgroups.size() > 0) {
+
+			for (Identity launchersWorkgroup : launchersWorkgroups) {
+
+				wgListStr = "\"" + launchersWorkgroup.getName() + "\",";
+
+			} 
+
+			wgListStr = wgListStr + "\"" + launcher + "\"";
+		}
+		String filterString = "(application.name == \"Dev_ROFID\""+ " && type == \"group\"" + " && owner.name.in({"	+ wgListStr + "}))";
+		log.warn("filterString::"+filterString);
+		field.setFilterString(filterString);
+
+              ]]></Source>
+            </Script>
+          </Field>
+        </Section>
+      </Form>
+    </Approval>
+    <Description>Present a form to the user and gather their input. Validate the entered LDAP group against our known LDAP entries internally.</Description>
+    <Transition to="Start" when="!approved"/>
+    <Transition to="Modify Group Details"/>
+  </Step>
+  <Step icon="Message" name="Modify Group Details" posX="212" posY="10">
+    <Approval name="HDAP-EditGroup-Form-Approval" owner="ref:launcher" return="newGroupDisplayName,newDescription,newOwner,oldGroupName,oldDisplayName,oldGroupDescription,oldOwner" send="identityName,oldGroupNameDN">
+      <Form name="HDAP-EditGroup-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Modify Group Details"/>
+          </Map>
+        </Attributes>
+        <Button action="next" label="Next"/>
+        <Button action="back" label="Back"/>
+        <Button action="cancel" label="Cancel Request"/>
+        <Section columns="2" label="Group Details">
+          <Attributes>
+            <Map>
+              <entry key="hideNulls" value="true"/>
+            </Map>
+          </Attributes>
+          <Field displayName="Group Name" name="oldGroupName" readOnly="true" type="string">
+            <Script>
+              <Source><![CDATA[
+          String newName = "";
+          String oldName = oldGroupNameDN;
+          if(oldName != null){
+          	int endIndex = oldName.indexOf(',');
+          	newName = oldName.substring(3,endIndex);
+          }
+          log.warn("newName::"+newName);
+          return newName;
+          ]]></Source>
+            </Script>
+          </Field>
+          <Field displayName="Group Owner" displayType="combobox" name="oldOwner" readOnly="true" type="string">
+            <Script>
+              <Source><![CDATA[
+          
+  import sailpoint.api.*;
+  import sailpoint.object.*;
+  import sailpoint.tools.*;
+  
+  
+   public static String getGroupOwnerName(String groupName, String appName){
+     
+     Application appObj=context.getObjectByName(Application.class,appName);
+     ManagedAttribute ma = ManagedAttributer.get(context,appObj,"groups",groupName);
+     return ma.getOwner().getDisplayName();
+   }
+   String oldOwnerName = getGroupOwnerName(oldGroupNameDN,"Dev_ROFID");
+  
+   return oldOwnerName;
+          ]]></Source>
+            </Script>
+          </Field>
+          <Field displayName="Group Display Name" displayType="combobox" name="oldDisplayName" readOnly="true" type="string">
+            <Script>
+              <Source><![CDATA[
+          
+  import sailpoint.api.*;
+  import sailpoint.object.*;
+  import sailpoint.tools.*;
+  
+  
+   public static String getGroupDisplayName(String groupName, String appName){
+     
+     Application appObj=context.getObjectByName(Application.class,appName);
+     ManagedAttribute ma = ManagedAttributer.get(context,appObj,"groups",groupName);
+     return ma.getDisplayName();
+   }
+   String oldDisplayName = getGroupDisplayName(oldGroupNameDN,"Dev_ROFID");
+  
+   return oldDisplayName;
+          ]]></Source>
+            </Script>
+          </Field>
+          <Field displayName="Group Description" displayType="combobox" name="oldGroupDescription" readOnly="true" type="string">
+            <Script>
+              <Source><![CDATA[
+          
+  import sailpoint.api.*;
+  import sailpoint.object.*;
+  import sailpoint.tools.*;
+  
+  
+   public static String getGroupDescription(String groupName, String appName){
+     
+     Application appObj=context.getObjectByName(Application.class,appName);
+     ManagedAttribute ma = ManagedAttributer.get(context,appObj,"groups",groupName);
+     return ma.getAttributes().getString("description");
+   }
+   String oldDescription = getGroupDescription(oldGroupNameDN,"Dev_ROFID");
+  
+   return oldDescription;
+          ]]></Source>
+            </Script>
+          </Field>
+        </Section>
+        <Section columns="2" label="">
+          <Field displayName="New Group Display Name" name="newGroupDisplayName" required="true" type="string"/>
+          <Field displayName="New Description" name="newDescription" required="true" type="string"/>
+          <Field displayName="New Owner" name="newOwner" required="true" type="identity">
+            <Attributes>
+              <Map>
+                <entry key="valueProperty" value="name"/>
+              </Map>
+            </Attributes>
+            <Script>
+              <Source><![CDATA[
+  
+      import sailpoint.object.Identity;
+		  import java.util.List;
+		  import sailpoint.tools.Util;
+                
+         
+        /**Add Only active users with ROFID accounts**/       
+        String filterString="inactive==false";
+        field.setFilterString(filterString);
+                            ]]></Source>
+            </Script>
+          </Field>
+        </Section>
+      </Form>
+    </Approval>
+    <Description>Present user with a confirmation form before creating the group.</Description>
+    <Transition to="SelectForm" when="!approved"/>
+    <Transition to="Confirm Group Changes" when="approved"/>
+  </Step>
+  <Step icon="Message" name="Confirm Group Changes" posX="212" posY="10">
+    <Approval name="HDAP-EditGroup-Confirm-Form-Approval" owner="ref:launcher" return="members" send="identityName,oldGroupName,newGroupDisplayName,newDescription,newOwner,oldGroupDescription,oldDisplayName,oldOwner">
+      <Form name="HDAP-EditGroup-Confirm-Form">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Confirm Group Membership Changes"/>
+          </Map>
+        </Attributes>
+        <Button action="next" label="Submit"/>
+        <Button action="back" label="Back"/>
+        <Button action="cancel" label="Cancel Request"/>
+        <Section columns="2" label="Group Details">
+          <Attributes>
+            <Map>
+              <entry key="hideNulls" value="true"/>
+            </Map>
+          </Attributes>
+          <Field displayName="Old Group Name" name="oldGroupName" readOnly="true" type="string" value="ref:oldGroupName"/>
+          <Field displayName="Group Owner" displayType="combobox" name="oldOwner" readOnly="true" type="string" value="ref:oldOwner"/>
+          <Field displayName="Group Display Name" displayType="combobox" name="oldDisplayName" readOnly="true" type="string" value="ref:oldDisplayName"/>
+          <Field displayName="Group Description" displayType="combobox" name="oldGroupDescription" readOnly="true" type="string" value="ref:oldGroupDescription"/>
+        </Section>
+        <Section columns="2" label="Confirm Group Changes">
+          <Field displayName="New Group Display Name" name="newGroupDisplayName" readOnly="true" type="string" value="ref:newGroupName"/>
+          <Field displayName="New Description" name="newDescription" readOnly="true" type="string" value="ref:newDescription"/>
+          <Field displayName="New Owner" name="newOwner" readOnly="true" type="identity" value="ref:newOwner"/>
+        </Section>
+      </Form>
+    </Approval>
+    <Description>Present user with a confirmation form before modifying the group.</Description>
+    <Transition to="Modify Group Details" when="!approved"/>
+    <Transition to="Build Plan" when="approved"/>
+  </Step>
+  <Step icon="Task" name="Build Plan" posX="276" posY="107" resultVariable="plan">
+    <Arg name="oldGroupNameDN" value="ref:oldGroupNameDN"/>
+    <Arg name="newGroupDisplayName" value="ref:newGroupDisplayName"/>
+    <Arg name="newOwner" value="ref:newOwner"/>
+    <Arg name="newDescription" value="ref:newDescription"/>
+    <Description>This step will construct a provisioning plan with the requested LDAP groups.</Description>
+    <Script>
+      <Source><![CDATA[
+
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.ObjectRequest ;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import java.util.List;
+
+
+
+log.warn("oldGroupNameDN::"+oldGroupNameDN);
+log.warn("newGroupName::"+newGroupName);
+String appName = "Dev_ROFID";
+String baseDN = ",cn=Groups,dc=boston1,dc=cob";
+String attrName = "groups";
+boolean debug = true;
+
+
+if (debug) {
+              System.out.println("Starting to create ObjectRequest Plan for " + appName + " for baseDN=" + baseDN); 
+}
+
+ProvisioningPlan plan = new ProvisioningPlan();
+
+if (debug) {
+              System.out.println("Starting to build plan..."); 
+}
+
+ObjectRequest or = new ObjectRequest(); 
+
+if (debug) {
+              System.out.println("Created Object Request..."); 
+}
+
+or.setOp(ProvisioningPlan.ObjectOperation.Modify); 
+or.setNativeIdentity(oldGroupNameDN);
+//(oldGroupNameDN);
+or.setType("group"); 
+or.setApplication(appName); 
+or.add(new AttributeRequest("sysAttribute",attrName));
+if(newGroupName != null){
+or.add(new AttributeRequest("sysDisplayName",ProvisioningPlan.Operation.Set,newGroupDisplayName));
+or.add(new AttributeRequest("cn",ProvisioningPlan.Operation.Set,newGroupDisplayName));
+or.add(new AttributeRequest("dn",oldGroupNameDN));
+}
+if(newOwner != null){
+or.add(new AttributeRequest("sysOwner",ProvisioningPlan.Operation.Set,newOwner));
+}
+if(newDescription != null){
+or.add(new AttributeRequest("description",ProvisioningPlan.Operation.Set,newDescription));
+}
+or.add(new AttributeRequest("sysAttribute",attrName));
+or.add(new AttributeRequest("sysRequestable",true));
+or.add(new AttributeRequest("sysManagedAttributeType","Entitlement"));
+
+
+
+//
+// ObjectRequest created, now add to the Plan
+// Add a requester also
+//
+
+plan.addObjectRequest(or);
+plan.addRequester(context.getObjectByName(Identity.class,context.getUserName())); 
+
+//
+// output the Provisioning Plan prior to passing off to be provisioned. 
+//
+
+if (debug) {
+             System.out.println("Provisioning Plan = " + plan.toXml());
+}
+
+//
+// return the plan so it's available in the workflow for later. 
+//
+
+return plan;
+
+
+]]></Source>
+    </Script>
+    <Transition to="Provision Group"/>
+  </Step>
+  <Step icon="Task" name="Provision Group" posX="403" posY="107">
+    <Arg name="trace" value="ref:trace"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Description>Call the "built-in" entitlement update workflow with our calculated plan in order to provision both the LDAP group AND the internal Entitlement Catalog entry.</Description>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="Entitlement Update"/>
+    </WorkflowRef>
+    <Transition to="Send Confirmation Email"/>
+  </Step>
+  <Step name="Send Confirmation Email">
+    <Arg name="launcher" value="ref:launcher"/>
+    <Arg name="newGroupDisplayName" value="ref:newGroupDisplayName"/>
+    <Arg name="newOwner" value="ref:newOwner"/>
+    <Arg name="oldOwner" value="ref:oldOwner"/>
+    <Arg name="newDescription" value="ref:newDescription"/>
+    <Arg name="oldDisplayName" value="ref:oldDisplayName"/>
+    <Arg name="oldGroupDescription" value="ref:oldGroupDescription"/>
+    <Arg name="oldGroupName" value="ref:oldGroupName"/>
+    <Script>
+      <Source><![CDATA[
+    import sailpoint.object.*;
+    import sailpoint.api.*;
+    
+    
+        Identity ownerIdent= context.getObjectByName(Identity.class,newOwner);
+        String ownerName= ownerIdent.getDisplayName();
+        
+        String successNotifyTemplate= "COB-EmailTemplate-ROFIDGroup-Edit-Success";
+        EmailTemplate template = context.getObjectByName(EmailTemplate.class,successNotifyTemplate);
+        Identity launcherIdent = context.getObjectByName(Identity.class,launcher);
+        String toEmail= launcherIdent.getEmail();
+        EmailOptions emailOptions= new EmailOptions();
+        emailOptions.setSendImmediate(true);
+        emailOptions.setVariable("oldGroupName",oldGroupName);
+        if(!oldOwner.equalsIgnoreCase(newOwner)){
+        emailOptions.setVariable("newOwner",newOwner);
+        }
+        if(!newGroupDisplayName.equalsIgnoreCase(oldDisplayName)){
+        emailOptions.setVariable("newGroupDisplayName",newGroupDisplayName);
+        }
+        if(!oldGroupDescription.equalsIgnoreCase(newDescription)){
+        emailOptions.setVariable("newDescription",newDescription);
+        }
+        emailOptions.setVariable("launcherName",launcherIdent.getDisplayName());
+        emailOptions.setNoRetry(true);
+        if(toEmail != null){
+        emailOptions.setCc(toEmail);
+        }
+        emailOptions.setTo("pankaj@likemindsconsulting.com");
+        context.sendEmailNotification(template,emailOptions);
+    ]]></Source>
+    </Script>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Stop" name="Stop" posX="481" posY="8"/>
+  <Step catches="complete" icon="Catches" name="HandleException" posX="37" posY="690">
+    <Script>
+      <Source><![CDATA[
+		String logPrefix = workflowLogPrefix + wfcontext.getStep().getName() + "::";
+		try {
+		
+				cobLog(logPrefix, "EnterStep");
+				if(!wfcontext.getWorkflowCase().getErrors().isEmpty()&& !wfcontext.getWorkflowCase().getErrors().contains("LDAP: error code 67 - Modifying the Naming attribute for the entry without modifying the DN")){
+				sendErrorEmailFromWorkflow(wfcontext);
+				}
+				cobLog(logPrefix, "ExitStep");
+			}
+		 catch (Throwable e) {
+			cobLog(logPrefix, "Exception:");
+			e.printStackTrace();
+		}
+	
+       ]]></Source>
+    </Script>
+  </Step>
+</Workflow>

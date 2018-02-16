@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" name="COB-Workflow-SponsoredAccountExpiration-Reminder" type="IdentityEvent">
+  <Variable input="true" name="identityName"/>
+  <Variable name="emailRecipient"/>
+  <Variable initializer="COB-EmailTemplate-SponsoredAcctExpiration-Reminder" name="emailTemplate"/>
+  <Variable initializer="false" name="trace"/>
+  <Description>Workflow to send notification to user for sponsored account expiration.</Description>
+  <Step icon="Start" name="Start">
+    <Transition to="Notify">
+      <Script>
+        <Source><![CDATA[
+          
+          import sailpoint.object.Identity;
+          import sailpoint.tools.Util;
+
+          Identity identity = (Identity) context.getObject(Identity.class, identityName);
+          if(identity != null) {
+            emailRecipient = identity.getEmail();
+            workflow.put("emailRecipient", emailRecipient);
+          }
+
+          return (emailRecipient != void) && Util.isNotNullOrEmpty(emailRecipient);
+          
+        ]]></Source>
+      </Script>
+    </Transition>
+    <Transition to="Stop"/>
+  </Step>
+  <Step action="call:sendEmail" icon="Email" name="Notify">
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="template" value="ref:emailTemplate"/>
+    <Arg name="to" value="ref:emailRecipient"/>
+    <Arg name="argMap">
+      <Script>
+        <Source><![CDATA[
+      import sailpoint.object.Identity;
+      import java.uti.Map;
+      import java.util.HashMap;
+       
+       Map argMap = new HashMap();
+       Identity ident= context.getObjectByName(Identity.class,identityName);
+       if(ident != null){
+       
+         String identDisplayName= ident.getDisplayName();
+         argMap.put("identDisplayName", identDisplayName);
+         String expDate = ident.getStringAttribute("cobTermDate");
+         argMap.put("expDate",expDate);
+         Identity manager= ident.getManager();
+         if(manager != null){
+         String managerName= manager.getDisplayName();
+         argMap.put("managerName", managerName);
+        }
+       
+       
+       }
+      
+      ]]></Source>
+      </Script>
+    </Arg>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Stop" name="Stop"/>
+</Workflow>

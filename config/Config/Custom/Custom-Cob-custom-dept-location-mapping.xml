@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="COB-Custom-Dept-Location-Mapping">
+  <Attributes>
+    <Map>
+      <entry key="DeptMapping">
+        <value>
+          <Map>
+            <entry key="BCYF-385000">
+              <value>
+                <List>
+                  <String>Camp Joy</String>
+                  <String>Agassiz Community Ctr</String>
+                  <String>Archdale Community Ctr</String>
+                  <String>Bird Street Community Ctr</String>
+                  <String>Blackston Community Ctr</String>
+                  <String>Charlestown Community Ctr</String>
+                  <String>City Hall Child Care</String>
+                  <String>Cleveland Community Ctr</String>
+                  <String>Condon Community Ctr</String>
+                  <String>Curley Community Ctr</String>
+                  <String>Curtis Hall Community Ctr</String>
+                  <String>Draper Pool</String>
+                  <String>English High Community Ctr</String>
+                  <String>Flaherty Pool</String>
+                  <String>Gallivan Community Ctr</String>
+                  <String>Golden Age Center</String>
+                  <String>Harborside Community Ctr</String>
+                  <String>Hennigan Community Ctr</String>
+                  <String>Holland Community Ctr</String>
+                  <String>Hyde Park Community Ctr</String>
+                  <String>Jackson Mann Community Ctr</String>
+                  <String>Kent Community Ctr</String>
+                  <String>Madison Park Community Ctr</String>
+                  <String>Marshall Community Ctr</String>
+                  <String>Mason Pool</String>
+                  <String>Mattahunt Community Ctr</String>
+                  <String>Leahy/Holloran Community Ctr</String>
+                  <String>Nazarro Community Ctr</String>
+                  <String>Ohrenberger Community Ctr</String>
+                  <String>Orchard Park Community Ctr</String>
+                  <String>Orient Heights Community Ctr</String>
+                  <String>PAL Gym</String>
+                  <String>Paris Street Community Ctr</String>
+                  <String>Paris Street Pool</String>
+                  <String>Perkins Community Ctr</String>
+                  <String>Quincy Community Ctr</String>
+                  <String>Roche Family Community Ctr</String>
+                  <String>Roslindale Community Ctr</String>
+                  <String>Shelburne Community Ctr</String>
+                  <String>Thomas Johnson Community Ctr</String>
+                  <String>Tobin Community Ctr</String>
+                  <String>Tynan Community Ctr</String>
+                  <String>Vine Street Community Ctr</String>
+                  <String>West Roxbury Community Ctr</String>
+                  <String>Mildred Avenue Community Ctr</String>
+                  <String>Grove Hall Community Ctr</String>
+                  <String>Ellen Jackson Community Ctr</String>
+                </List>
+              </value>
+            </entry>
+            <entry key="City Clerk-161000">
+              <value>
+                <List>
+                  <String>City Archives</String>
+                </List>
+              </value>
+            </entry>
+            <entry key="Inspectional Services-260000">
+              <value>
+                <List>
+                  <String>1010 Massachusetts Ave</String>
+                </List>
+              </value>
+            </entry>
+            <entry key="Neighborhood Development-188000">
+              <value>
+                <List>
+                  <String>26 Court St</String>
+                </List>
+              </value>
+            </entry>
+            <entry key="Parks-300000">
+              <value>
+                <List>
+                  <String>1010 Massachusetts Ave</String>
+                </List>
+              </value>
+            </entry>
+            <entry key="Public Facilities-181000">
+              <value>
+                <List>
+                  <String>26 Court St</String>
+                </List>
+              </value>
+            </entry>
+            <entry key="Public Works-311000">
+              <value>
+                <List>
+                  <String>Brighton Yard </String>
+                  <String>West Roxbury Yard</String>
+                  <String>Gibson Street Yard</String>
+                  <String>Hyde Park Yard</String>
+                </List>
+              </value>
+            </entry>
+            <entry key="Transportation-251000">
+              <value>
+                <List>
+                  <String>Frontage Rd</String>
+                  <String>Tow Lot</String>
+                </List>
+              </value>
+            </entry>
+          </Map>
+        </value>
+      </entry>
+    </Map>
+  </Attributes>
+</Custom>

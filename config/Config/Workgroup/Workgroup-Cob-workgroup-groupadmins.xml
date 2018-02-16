@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Identity PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Identity name="COB-Workgroup-GroupAdmins" workgroup="true">
+  <Attributes>
+    <Map>
+      <entry key="displayName" value="COB-Workgroup-GroupAdmins"/>
+    </Map>
+  </Attributes>
+  <Description>Workgroup for admins who are authorized to create groups in ROFID</Description>
+  <Owner>
+    <Reference class="sailpoint.object.Identity" name="spadmin"/>
+  </Owner>
+  <Preferences>
+    <Map>
+      <entry key="workgroupNotificationOption">
+        <value>
+          <WorkgroupNotifationOption>Both</WorkgroupNotifationOption>
+        </value>
+      </entry>
+    </Map>
+  </Preferences>
+</Identity>

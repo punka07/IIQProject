@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-Form-IdentityVerification">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Identity Verification Form"/>
+          </Map>
+        </Attributes>
+        <Section columns="2">
+          <Field columnSpan="1" displayName="Employee/User ID" name="emplId" helpKey="Employee/User ID provided by the requester" type="string" value="ref:emplId" readOnly="true"/>
+          <Field columnSpan="1" displayName="Full Name" name="fullName" type="string"/>
+          <Field columnSpan="1" displayName="Last 4 Digits of SSN" name="ssn" type="string">
+            <Attributes>
+              <Map>
+                <entry key="hidden">
+                  <value>
+                    <Script>
+                      <Source><![CDATA[
+
+
+if (isEmployee) {
+
+return false;
+
+} else {
+
+return true;
+
+}
+
+]]></Source>
+                    </Script>
+                  </value>
+                </entry>
+              </Map>
+            </Attributes>
+          </Field>
+          <Field columnSpan="2" displayName="Day and Month of Date of Birth" helpKey="Should be in MM-dd-yyyy format" name="dob" type="string">
+            <Attributes>
+              <Map>
+                <entry key="hidden">
+                  <value>
+                    <Script>
+                      <Source><![CDATA[
+
+
+if (isEmployee) {
+
+return true;
+
+} else {
+
+return false;
+
+}
+
+]]></Source>
+                    </Script>
+                  </value>
+                </entry>
+              </Map>
+            </Attributes>
+            <ValidationScript>
+            <Source>
+            import sailpoint.tools.Message;
+			   import sailpoint.object.Identity;
+			   import java.util.regex.Matcher;
+			   import java.util.regex.Pattern;
+			   
+             		//Date of birth format: MM-dd-yyyy;
+	   	   String regex ="^(1[0-2]|0[1-9])-(3[01]|[12][0-9]|0[1-9])-[0-9]{4}$";
+	   	   //"(0?[1-9]|[12][0-9]|3[01])-(0?[1-9]|1[012])-(0?(19|20)-d{2})";
+	   	   //"^\\[0-9]\\-[0-9]";		
+		   List messages = new ArrayList();
+		   Message msg = new Message();
+		   Pattern pattern = Pattern.compile(regex);
+		   log.warn("pattern::"+pattern);
+    	   if(value!=null){
+        		Matcher matcher = pattern.matcher(value);
+          		if (!matcher.matches()) {
+            			msg.setKey("Date of birth format should be MM-dd-yyyy format.");		
+          			messages.add(msg);
+          			return messages;  
+   				} 
+        		}
+  	 	else
+    			
+		
+		return messages;
+		return messages;
+            </Source>
+            </ValidationScript>
+          </Field>
+        </Section>
+        <Button action="next" label="Next"/>
+        <Button action="cancel" label="Cancel"/>
+      </Form>

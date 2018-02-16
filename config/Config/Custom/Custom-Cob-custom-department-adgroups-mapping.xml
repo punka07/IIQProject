@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="COB-Custom-Department-ADGroups-Mapping">
+  <Attributes>
+    <Map>
+      <entry key="Dept-ADGroups">
+        <value>
+          <Map>
+            <entry key="111000" value="Mayor's Office"/>
+            <entry key="112000" value="City Council Staff"/>
+            <entry key="113000" value="Immigrant Advancement"/>
+            <entry key="114000" value="Consumer Affairs Staff"/>
+            <entry key="121000" value="Elections Staff"/>
+            <entry key="131000" value="Auditing Staff"/>
+            <entry key="136000" value="Assessing AssesssingEmailUsers"/>
+            <entry key="137000" value="Collections Staff"/>
+            <entry key="138000" value="TreasuryStaff"/>
+            <entry key="141000" value="OBM Staff"/>
+            <entry key="142000" value="OHR Staff"/>
+            <entry key="143000" value="Procurement Staff"/>
+            <entry key="144000" value="A&amp;F Staff"/>
+            <entry key="147000" value="Labor Relations"/>
+            <entry key="149000" value="DOITStaff"/>
+            <entry key="150000" value="Intergovernmental Services"/>
+            <entry key="151000" value="Law LawStaff"/>
+            <entry key="161000" value="City Clerk Staff"/>
+            <entry key="163000" value="RegistryStaff"/>
+            <entry key="180000" value="Property &amp; Construction Management Staff"/>
+            <entry key="181000" value="Public Facilities Staff"/>
+            <entry key="182000" value="Economic Development Staff"/>
+            <entry key="188000" value="DND"/>
+            <entry key="231000" value="OEM Staff"/>
+            <entry key="251000" value="BTD All Staff"/>
+            <entry key="252000" value="Licensing Staff"/>
+            <entry key="253000" value="Parking Clerk"/>
+            <entry key="260000" value="ISDEmailAccounts"/>
+            <entry key="303000" value="Environment Staff"/>
+            <entry key="311000" value="PWD Employees"/>
+            <entry key="385000" value="BCYF Staff"/>
+            <entry key="403000" value="Fair Housing Staff"/>
+            <entry key="412000" value="Neighborhood Services"/>
+            <entry key="414000" value="Arts and Culture "/>
+            <entry key="415000" value="TourismStaff"/>
+            <entry key="782000" value="RetirementDepartmentStaff"/>
+          </Map>
+        </value>
+      </entry>
+    </Map>
+  </Attributes>
+</Custom>

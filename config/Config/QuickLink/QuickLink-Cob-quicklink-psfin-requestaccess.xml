@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE QuickLink PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<QuickLink action="workflow" category="Manage" cssClass="quicklink-psfin-access-request" messageKey="Request Financials Access" name="COB-QuickLink-PSFIN-RequestAccess" ordering="2">
+  <Attributes>
+    <Map>
+      <entry key="workflowName" value="COB-Workflow-PSFIN-AccessRequest"/>
+      <entry key="workflowSuccess" value="Starting Financials Access Request Process..."/>
+    </Map>
+  </Attributes>
+  <QuickLinkOptions allowSelf="true">
+    <DynamicScopeRef>
+      <Reference class="sailpoint.object.DynamicScope" name="Self Service"/>
+    </DynamicScopeRef>
+  </QuickLinkOptions>
+  <QuickLinkOptions allowSelf="true">
+    <DynamicScopeRef>
+      <Reference class="sailpoint.object.DynamicScope" name="Everyone"/>
+    </DynamicScopeRef>
+  </QuickLinkOptions>
+</QuickLink>

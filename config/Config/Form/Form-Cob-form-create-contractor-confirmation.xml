@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-Form-Create-Contractor-Confirmation">
+  <Attributes>
+    <Map>
+      <entry key="labelAlign" value="left"/>
+      <entry key="pageTitle" value="Account Creation Confirmation Form"/>
+      <entry key="title" value="Please confirm all the values entered into the form before submission"/>
+    </Map>
+  </Attributes>
+  <Section label="">
+    <Field displayName="User Type" name="userType" readOnly="true"/>
+    <Field displayName="First Name" name="firstName" readOnly="true"/>
+    <Field displayName="Last Name" name="lastName" readOnly="true"/>
+    <Field displayName="Sponsoring Manager" name="sponsorManager" readOnly="true"/>
+    <Field displayName="Department Name" name="departmentName" readOnly="true"/>
+    <Field displayName="Department ID" name="departmentId" readOnly="true"/>
+    <Field displayName="Email" name="emailAdd" readOnly="true"/>
+    <Field displayName="Location" name="location" readOnly="true"/>
+    <Field displayName="Phone No." name="phone" readOnly="true"/>
+    <Field displayName="Account Expiration Date" name="contractEndDate" readOnly="true"/>
+  </Section>
+  <Button action="next" label="Submit"/>
+  <Button action="back" label="Back"/>
+  <Button action="cancel" label="Cancel"/>
+</Form>

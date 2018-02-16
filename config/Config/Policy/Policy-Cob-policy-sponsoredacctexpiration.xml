@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Policy PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Policy certificationActions="Mitigated,Delegated" configPage="advancedPolicy.xhtml" executor="sailpoint.policy.GenericPolicyExecutor" name="COB-Policy-SponsoredAcctExpiration" state="Active" type="Advanced" typeKey="policy_type_advanced" violationOwnerType="Manager">
+  <PolicyAlert disabled="true" escalationStyle="none"/>
+  <Attributes>
+    <Map>
+      <entry key="sysDescriptions">
+        <value>
+          <Map>
+            <entry key="en_US" value="Sponsored Account Expiration Policy"/>
+          </Map>
+        </value>
+      </entry>
+      <entry key="taskResultId" value="8a71efd2614baa5801614e9e792d07b9"/>
+    </Map>
+  </Attributes>
+  <Owner>
+    <Reference class="sailpoint.object.Identity" name="spadmin"/>
+  </Owner>
+  <GenericConstraints>
+    <GenericConstraint name="Sponsored Account Expiration Rule" violationOwnerType="None">
+      <Attributes>
+        <Map>
+          <entry key="violationWorkflow" value="COB-Workflow-ExpiredPassword"/>
+        </Map>
+      </Attributes>
+      <IdentitySelector>
+        <RuleRef>
+          <Reference class="sailpoint.object.Rule" name="COB-Rule-SponsoredAcctExpirationPolicy"/>
+        </RuleRef>
+      </IdentitySelector>
+    </GenericConstraint>
+  </GenericConstraints>
+</Policy>

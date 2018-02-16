@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="Suspend Identity Confirm Form">
+  <Button action="next" label="Submit Request"/>
+  <Button action="back" label="Cancel Request"/>
+  <Section name="Identity Information" type="text">
+    <Attributes>
+      <Map>
+        <entry key="hideNulls" value="true"/>
+      </Map>
+    </Attributes>
+    <Field displayName="Select User Name: " name="suspUser" readOnly="true" type="Identity"/>
+    <Field displayName="Selected User Display Name: " name="userDisplayName" readOnly="true"/>
+    <Field displayName="Email: " name="userEmail" readOnly="true"/>
+    <Field displayName="Suspension Date: " name="suspensionDate" readOnly="true" type="date"/>
+  </Section>
+</Form>

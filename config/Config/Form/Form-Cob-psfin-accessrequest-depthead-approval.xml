@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-PSFIN-AccessRequest-DeptHead-Approval">
+  <Attributes>
+    <Map>
+      <entry key="pageTitle" value="Department Head Approval for PeopleSoft Financials Account/Access "/>
+    </Map>
+  </Attributes>
+  <Section label="User Details" name="User Details">
+    <Field displayName="User ID" name="UserID" readOnly="true" type="string"/>
+    <Field displayName="Full Name" name="UserDescription" readOnly="true" type="string"/>
+    <Field displayName="Primary Email Address" name="PrimaryEmailAddress" readOnly="true" type="string"/>
+    <Field displayName="WorkList User?" name="WorkListUser" readOnly="true" type="boolean"/>
+    <Field displayName="Email User?" name="EmailUser" readOnly="true" type="boolean"/>
+  </Section>
+  <Section label="Selected Role(s)" name="Selected Role(s)">
+    <Field displayName="Roles" multi="true" name="roleNames" readOnly="true" type="ManagedAttribute"/>
+  </Section>
+  <Section label="" name="">
+    <Field displayName="Comments" name="deptHeadComments" type="string">
+      <ValidationScript>
+        <Source><![CDATA[
+        if(value==null){
+        
+           return "Please enter rejection comments.";
+        }
+        ]]></Source>
+      </ValidationScript>
+    </Field>
+  </Section>
+  <Button action="next" label="Approve" parameter="requestRejected" skipValidation="true" value="false"/>
+  <Button action="next" label="Reject" parameter="requestRejected" value="true"/>
+  <Button action="cancel" label="Cancel"/>
+</Form>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB LCE Joiner Trigger Rule" type="IdentityTrigger">
+  <ReferencedRules>
+    <Reference class="sailpoint.object.Rule" name="COB Joiner Rules Library"/>
+    <Reference class="sailpoint.object.Rule" name="COBCONF Joiner Rules Library"/>
+  </ReferencedRules>
+  <Signature returnType="boolean">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="previousIdentity">
+        <Description>
+          The identity before the refresh/aggregation (this will be null when an
+          identity is created).
+        </Description>
+      </Argument>
+      <Argument name="newIdentity">
+        <Description>
+          The identity after the refresh/aggregation (this will be null when an
+          identity is deleted).
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="result">
+        <Description>
+          A boolean describing the result of the rule.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[import org.apache.log4j.Logger;  
+import org.apache.log4j.Level;  
+Logger log = Logger.getLogger("sailpoint.rule.joiner");  
+  
+String wfName = "COB-Workflow-Joiner";  
+String idAttrib = "launchExplanation-" + wfName;  
+  
+String idName = newIdentity.getName();  
+log.debug("Evaluating workflow trigger for Identity:" + idName);  
+  
+// Let's start off with the posture that we assume the workflow "should" launch  
+// for the Identity.  Then, like a pilot, we will do a "pre-flight" check in the  
+// script to ensure all required fields and state are available before launching  
+// the workflow.  If any pre-flight test fails, then this flag gets toggled  
+// and we append a description message to a 'launchExplanation' attribute that  
+// will be stored on the Identity cube.  
+boolean shouldLaunchWorkflow = isTriggerJoinerRule(context, previousIdentity, newIdentity);
+  
+// Declare a StringBuilder that collects the reasons why the rule should not  
+// launch the workflow.  These get put on the newIdentity to "explain" why  
+// the workflow does not launch.  By assembling these all in one string builder  
+// we can put an entire list of explanations on the cube.  This allows  
+// administrators to understand in 1 paragraph of text why this specific  
+// workflow trigger chose not to launch for an Identity.  
+StringBuilder noLaunchReasons = new StringBuilder();  
+  
+// Pre-flight check: Only launch for Identity objects that are correlated.  
+if (false == newIdentity.isCorrelated()) {  
+   shouldLaunchWorkflow = false;  
+   String lMsg = "Identity is not correlated (not created from an authoritative source). ";  
+   noLaunchReasons.append(lMsg);  
+   log.debug(idName + " - " + lMsg);  
+}  
+  
+// Pre-flight check: Only launch for Identity objects that have valid emails.  
+String idEmail = newIdentity.getEmail();  
+if (null == idEmail) {  
+   shouldLaunchWorkflow = false;  
+   String lMsg = "Identity does not have an valid eMail address populated. ";  
+   noLaunchReasons.append(lMsg);  
+   log.debug(idName + " - " + lMsg);  
+}  
+  
+// Pre-flight check: Make sure the workflow has not previously been launched  
+// for this Identity.  This is a "double launch guard" kind of approach to  
+// prevent multiple instances of the workflow from being in flight for an  
+// Identity at one time.  
+// We look for a tell-tale sign of " launched at xxxxxx" in the attribute  
+// to tell this rule if the workflow has been launched in the past.  
+String prevLaunchMsg = newIdentity.getAttribute(idAttrib);  
+if ((null != prevLaunchMsg) && (prevLaunchMsg.contains("launched at"))) {  
+   shouldLaunchWorkflow = false;   
+   if ( !prevLaunchMsg.startsWith("Already run: ") ) {  
+      noLaunchReasons.append("Already run: " + prevLaunchMsg);  
+   }  
+   log.debug(idName + " has already had the workflow run against it.");  
+}  
+  
+if(previousIdentity != null){
+    shouldLaunchWorkflow = false; 
+}
+  if(newIdentity.getAttributes().containsKey("isNewJoiner")){
+if(newIdentity.getStringAttribute("isNewJoiner").equals("false")){
+
+    shouldLaunchWorkflow = false; 
+}
+  }
+// Easy way to convert a number into a time stamp.  
+String timeStamp = "" + System.currentTimeMillis();  
+  
+if (shouldLaunchWorkflow) {  
+   log.debug("Launching workflow for identity:" + idName);  
+   newIdentity.setAttribute("isNewJoiner", "false"); 
+} else {  
+   // Add the explanation for why this workflow is not launched to a  
+   // non-searchableidentity attribute.  
+   newIdentity.getAttributes().put(idAttrib, noLaunchReasons.toString());   
+   log.debug("Skipping workflow launch for identity:" + idName);   
+}  
+  
+return shouldLaunchWorkflow;]]></Source>
+</Rule>

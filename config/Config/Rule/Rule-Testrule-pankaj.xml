@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="TestRule-Pankaj">
+  <Source><![CDATA[
+  
+import java.util.*; 
+import sailpoint.object.Filter;
+import sailpoint.object.Identity;
+import sailpoint.object.QueryOptions;
+import sailpoint.object.*;
+import sailpoint.api.*;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import sailpoint.api.IdentityService;
+import sailpoint.api.SailPointContext;
+import sailpoint.object.Application;
+import sailpoint.object.Identity;
+import sailpoint.object.Link;
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.AccountRequest;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import sailpoint.object.Workflow;
+import sailpoint.tools.GeneralException;
+import sailpoint.tools.Util;
+
+	   String identityName="Pbc";
+        Identity idn = context.getObjectByName(Identity.class, identityName);
+
+        Link updateLink = null;
+        Date accountExpires = null;
+
+        IdentityService idnService = new IdentityService(context);
+
+        //Account Request
+        AccountRequest acctReq = null;
+
+        List lAccReqs = new ArrayList();
+        //linkGrp is a list of all AD groups the leaver is a member of
+        List linkGrp= new ArrayList();
+        //Add AD disable account request
+        Application appAD = context.getObjectByName(Application.class, "Active_Directory");
+        List adLinks = idnService.getLinks(idn, appAD);
+        if (Util.size(adLinks) > 0) {
+            //gapLog(logPrefix, "Number of AD Link(s): " + adLinks.size());
+            for (Object adLink : adLinks) {
+                Link lnk = (Link) adLink;
+                linkGrp= (List) lnk.getAttribute("memberOf");
+               
+                //workflow.put("removedADGroups",linkGrp);
+                // System.out.println("===linkGrp==="+linkGrp);
+                if (!lnk.getDisplayName().contains("s-") || !lnk.getDisplayName().contains("S-")) {//KA TODO - incorrect - should be startsWith()
+                    acctReq = new AccountRequest();
+                    acctReq.setApplication(appAD.getName());
+                    acctReq.setNativeIdentity(lnk.getNativeIdentity());
+                    acctReq.setOperation(AccountRequest.Operation.Modify);
+                    acctReq.add(new AttributeRequest("userAccountControl", ProvisioningPlan.Operation.Set, "514"));
+
+                    //add attribute request to remove the group memberships
+
+                    if(null != linkGrp &amp;&amp; !linkGrp.isEmpty()){
+                        for(String eachGrp: linkGrp){
+
+                            // System.out.println("===eachGrp==="+eachGrp);
+
+                            acctReq.add(new AttributeRequest("memberOf", ProvisioningPlan.Operation.Remove,eachGrp));
+
+                        }
+                    }
+
+                    //To update EDS Account Expires
+          /*
+					if ("adDisabled".equals(triggerType)) {
+						if (accountExpires == null) {
+							accountExpires = com.gap.custom.tools.GapUtils.convertLinkAccountExpiresToDate(lnk.getAttributes().getString(ADAttribute.ACCOUNTEXPIRES));
+						}
+						//gapLog(logPrefix, "accountExpires=" + accountExpires);
+					}
+          */
+
+                    //Adding the account request to plan if the account is not disabled
+                    if (!"514".equals(lnk.getAttribute("userAccountControl"))) {//KA TODO FIXME
+                        //log.info(logPrefix + identityName + "::Account to terminate : AD :" + lnk.getNativeIdentity());
+                        lAccReqs.add(acctReq);
+                        // System.out.println("===lAccReqs==="+lAccReqs);
+                    }
+                } else {
+                    //System.out.println(logPrefix + identityName + "::S-Account Ignored for termination :" + lnk.getNativeIdentity());
+                }
+            }
+        }
+  ProvisioningPlan pTermPlan = new ProvisioningPlan();
+		pTermPlan.setAccountRequests(lAccReqs);
+        return pTermPlan;
+  /*
+        IdentityService identityService = new IdentityService(context);
+        Application application = context.getObjectByName(Application.class, "Active_Directory");
+        Identity identity = context.getObjectByName(Identity.class, "Pbc");
+        List linkList = identityService.getLinks(identity,application);
+        List linkGrp= new ArrayList();
+        List groupNames= new ArrayList();
+        for(Link eachLink: linkList){
+          	if  	(!eachLink.getDisplayName().contains("a-") || !eachLink.getDisplayName().contains("s-") || !eachLink.getDisplayName().contains("SA_")){
+              System.out.println("===linkName NEW a- excluded=="+eachLink.getDisplayName());
+               linkGrp= (List) eachLink.getAttribute("memberOf");
+            }
+          for(String eachGrp: linkGrp){
+            groupNames.add(eachGrp);
+          }
+        }
+
+      return groupNames;
+
+
+
+  //Auditing the AD Group Membership removal transaction
+  /*
+                String action = "gap_remove_ad_group_memberships";
+
+                AuditEvent event = new AuditEvent();
+                event.setAction(action);
+                event.setAttribute("Removed AD Group Memberships", removedADGroups);
+
+                event.setAttribute("Leaver", identityDisplayName);
+
+                Auditor.log(event);
+
+                context.commitTransaction();
+                */
+
+  
+]]></Source>
+</Rule>

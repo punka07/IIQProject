@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE QuickLink PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<QuickLink action="workflow" category="Admin" cssClass="quicklink-ldapedit" messageKey="Edit Group" name="COB-QuickLink-EditROFIDGrp">
+  <Attributes>
+    <Map>
+      <entry key="workflowName" value="COB-Workflow-EditHDAPGroup"/>
+      <entry key="workflowSuccess" value="Starting Group Edit Request Process..."/>
+    </Map>
+  </Attributes>
+  <QuickLinkOptions allowSelf="true">
+    <DynamicScopeRef>
+      <Reference class="sailpoint.object.DynamicScope" name="Everyone"/>
+    </DynamicScopeRef>
+  </QuickLinkOptions>
+  <QuickLinkOptions allowSelf="true">
+    <DynamicScopeRef>
+      <Reference class="sailpoint.object.DynamicScope" name="Self Service"/>
+    </DynamicScopeRef>
+  </QuickLinkOptions>
+  <QuickLinkOptions allowSelf="true">
+    <DynamicScopeRef>
+      <Reference class="sailpoint.object.DynamicScope" name="COB-DynamicScope-GroupAdmins"/>
+    </DynamicScopeRef>
+  </QuickLinkOptions>
+</QuickLink>

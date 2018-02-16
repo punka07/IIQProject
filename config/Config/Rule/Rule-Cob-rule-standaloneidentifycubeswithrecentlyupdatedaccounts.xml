@@ -1,0 +1,463 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-StandAloneIdentifyCubesWithRecentlyUpdatedAccounts" type="BuildMap">
+  <Description>A Rule to identify cubes with recently updated Links/Accounts. </Description>
+  <Signature returnType="Map">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+					The log object associated with the SailPointContext.
+				</Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+					A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+				</Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Source><![CDATA[
+		
+	// Library inclusions for BeanShell
+	import java.util.*;
+	import java.lang.*;
+	import java.text.*;
+
+	import java.io.BufferedReader;
+	import java.io.FileReader;
+	import java.io.IOException;
+
+	import java.sql.Connection;
+	import java.sql.DatabaseMetaData;
+	import java.sql.DriverManager;
+	import java.sql.PreparedStatement;
+	import java.sql.Statement;
+	import java.sql.SQLException;
+	import java.sql.ResultSet;
+	import java.sql.Types;
+	import org.hibernate.Query;
+	import org.hibernate.Session;
+
+	import sailpoint.api.*;
+	import sailpoint.object.*;
+	import sailpoint.tools.Message;
+
+	import org.apache.log4j.Logger;
+	import org.apache.log4j.Level;
+
+	// Declare a logger class for us to isolate these messages during aggregation.
+	Logger log = Logger.getLogger("sailpoint.services.rule.IdentifyCubesWithRecentlyUpdatedAccounts");
+
+	// Temporarily Force the log level to DEBUG for initial testing.
+	// TODO: Turn this off in your dev/uat/production task.
+	// log.setLevel(Level.DEBUG);
+	log.setLevel(Level.INFO);
+
+	log.info("Start of rule cob-Rule-StandAloneIdentifyCubesWithRecentlyUpdatedAccounts");
+	// Define a block size of Identity cubes where we will commit and decache to avoid RAM bloat.
+	int identityBlockSize = 2000;
+
+	// Build a list of Identity IDs that currently have their extended attribute set.
+	// These may be from a previous run and need to have their extended attribute un-set.
+	HashSet previouslySet = new HashSet();
+	List resultFields = new ArrayList();
+	resultFields.add("id");
+
+	log.info("Querying for Identity objects with 'hasRecentlyUpdatedAccounts' already set...");
+
+	QueryOptions qo = new QueryOptions();
+	qo.addFilter(Filter.eq("hasRecentlyUpdatedAccounts", "true"));
+	 
+	Iterator it = context.search(Identity.class, qo, resultFields);
+	while (it.hasNext()) {
+	   previouslySet.add((String) it.next()[0]);
+	   if (log.isDebugEnabled()) {
+			log.info("previouslySet: " + identityId);
+		}
+	}
+
+	log.info("Done querying for Identity objects.");
+
+	log.info("Table-scanning Link,Identity for new candidates...");
+
+	// A query to run against the IdentityIQ database to find Identity Records 
+	// who's links are recently updated.   This is the heart of what this script does.
+	// String sqlQuery = "sql:SELECT idt.id, idt.name, idt.last_refresh, link.native_identity, link.modified " +
+	//   "FROM spt_identity idt JOIN spt_link link ON link.identity_id = idt.id WHERE link.modified >= (idt.last_refresh - 1000)";
+	// An alternate implementation that uses Hibernate query syntax:
+	String sqlQuery = "select ident.id, ident.name, ident.lastRefresh, li.nativeIdentity, li.modified from Identity ident inner join ident.links as li where (ident.lastRefresh - 1000) < li.modified";
+	 
+	int numSet = 0;
+	QueryOptions qo = new QueryOptions(); 
+	Iterator it = context.search(sqlQuery, null, qo);
+	while (it.hasNext()) {
+	   
+	   Object [] results = it.next();
+	   
+	   String identityId   = (String) results[0];
+	   
+	   if (log.isDebugEnabled()) {
+			
+			String identityName = (String) results[1];
+			String lastRefresh  = "" + results[2];     // Elegant and simple integer to string cast, I like it!
+			String accountName  = (String) results[3];
+			String acctModified = "" + results[4];     // Another integer to string cast. 
+	   
+			// Show the nice users at the console what is going on for debugging.
+			log.info("id: " + identityId + " [" + identityName + "] - " + lastRefresh + " acct:" + accountName + " - " + acctModified);
+	   }
+		
+		// Remove the Identities that should still have their flag set from the previouslySet group.	   
+		if (previouslySet.contains(identityId)) {
+		   log.info("not removing from previouslySet group Identity: " + identityId);
+		   previouslySet.remove(identityId);
+	   } else {
+	   	// Mark ids that are the newly set Identity cubes that have newly updated accounts.
+		// These Identity cubes are candidates for being processed in a Refresh task.
+
+		   Identity id = context.getObjectById(Identity.class, identityId);
+		   if (null != id) {
+			  log.info("Setting hasRecentlyUpdatedAccounts for Identity: " + identityId);
+			  id.setAttribute("hasRecentlyUpdatedAccounts", "true");
+			  context.saveObject(id);   
+			  numSet++; 
+	   
+			   if ((numSet % identityBlockSize) == 0) {
+				  if ((void != taskResult) && (null != taskResult)) {   
+					// Update the TaskResult with the number of Identities processed so far.
+                                         String progressMsg1 = "Processed " + numSet + " Records";
+					taskResult.setProgress(progressMsg1);
+					context.saveObject(taskResult);        
+					log.info("taskResult progress set, object saved.");  
+				  }
+				  
+				  context.commitTransaction(); 
+				  context.decache(); 
+				  
+				  String progressMsg = "Set and committed " + numSet + " Identity cubes..."; 
+				  log.info(progressMsg);     
+			   }
+		   } else {
+			  log.warn("Could not load for setting Identity with id: " + identityId);
+		   }
+	   }
+	}
+	
+	// Make certain we store all the cubes back in the database.
+	context.commitTransaction();
+
+	// Un-mark all the previously marked Identities that should be marked.
+	int numUnSet = 0;
+	for (String identityId : previouslySet) {
+	   Identity id = context.getObjectById(Identity.class, identityId);
+	   if (null != id) {
+		  log.info("Clearing hasRecentlyUpdatedAccounts for Identity: " + identityId);
+		  id.setAttribute("hasRecentlyUpdatedAccounts", "");
+		  context.saveObject(id);   
+	   } else {
+		  log.warn("Could not load for clearing Identity with id: " + identityId);
+	   }
+	   numUnSet++;
+	   if ((numUnSet % identityBlockSize) == 0) {
+		  context.commitTransaction(); 
+		  context.decache(); 
+		  
+		  String progressMsg = "Cleared and committed " + numUnSet + " Identity cubes..."; 
+		  log.info(progressMsg);     
+	   }
+	}
+
+	// Make certain we store all the cubes back in the database.
+	context.commitTransaction();
+
+	String clrMessage = "Cleared hasRecentlyUpdatedAccounts on " + numUnSet + " cubes.";
+	String setMessage = "Set true hasRecentlyUpdatedAccounts on " + numSet + " cubes.";
+	log.info("pankaj " + clrMessage);
+	log.info("pankaj " + setMessage);
+
+	// For IdentityIQ 6.3+ the RuleExecutor will pass in the taskResult:
+	if ((void != taskResult) && (null != taskResult)) {   
+	  // Update the TaskResult with the number of Identities cleared and set.
+	  taskResult.addMessage(new Message(clrMessage, null));
+	  taskResult.addMessage(new Message(setMessage, null));
+	}
+
+log.info("pankaj 1111 " + clrMessage);
+
+	// We have the option to skip detection of deleted Links for the purposes 
+	// of identifying which cubes have changed.  Since checking for deleted
+	// links takes some time some larger installs may choose to skip looking for
+	// deleted links as a flag for finding a changed cube.
+	// To skip detection of deleted links set the task argument Rule named
+	// "skipCheckDeletedLinks" to "true".
+	if ((void != skipCheckDeletedLinks) && ("true".equals(skipCheckDeletedLinks))) {
+
+	   log.info("skipCheckDeletedLinks set to true, skipping deleted check. ");
+	   log.info("Done processing hasRecentlyUpdatedAccounts extended attributes."); 
+
+	   // Rules run by the RuleExecutor must return a success string.	
+	   return "Success: " + setMessage;
+	   
+	}
+
+log.info("pankaj 222 " + clrMessage);
+
+	// We will continue on with processing and do Link counts per identity and 
+	// check for deleted links.  This involves some creation of custom database
+	// tables.
+
+	// Note: the getJdbcConnection() was added in 6.2 as a new replacement for the
+	// deprecated getConncetion() method.  If using agianst pre-6.2, switch this 
+	// to context.getConnection() instead.
+	Connection dbCxn = context.getJdbcConnection();
+	if (null == dbCxn) {
+	   String errMsg = "Could not get a JDBC database connection from context."; 
+	   log.error(errMsg);
+	   return errMsg;
+	}
+
+log.info("pankaj 333 " + clrMessage);
+
+
+	// We need to crate 3 custom tables.  One will hold the previous execution's
+	// counts of links per Identity and another will hold the new count of links
+	// per Identity.  The third table will hold the differences or the "delta"
+	// between the two tables - which Identities where the new table count
+	// is different from the Identities in the old table count.
+	// We make a hash map of table name to DDL so we can create all the tables
+	// in a loop below.
+	// Note: the count_time columns are currently not used and are reserved for
+	// future use.
+	HashMap tblToDDLMap = new HashMap();
+
+	// Table 1: The link counts from the previous run.
+	String tableName = "spsvcs_identity_link_count";
+	String tableDDL  = "CREATE TABLE IDIQADM.spsvcs_identity_link_count ( " +
+	   " identity_id VARCHAR(128) PRIMARY KEY NOT NULL, " +
+	   " num_links   INT NOT NULL, " +
+	   " count_time  VARCHAR(16) " +
+	   ")";   
+	tblToDDLMap.put(tableName, tableDDL);
+
+	// Table 2: The link counts from the current run.
+	String tableName = "spsvcs_id_link_count_curr";
+	String tableDDL  = "CREATE TABLE IDIQADM.spsvcs_id_link_count_curr ( " +
+	   " identity_id VARCHAR(128) PRIMARY KEY NOT NULL, " +
+	   " num_links   INT NOT NULL, " +
+	   " count_time  VARCHAR(16) " +
+	   ")";   
+	tblToDDLMap.put(tableName, tableDDL);
+
+	// Table 3: The link counts deltas betweent the 2 tables
+	String tableName = "spsvcs_id_link_count_delta";
+	String tableDDL  = "CREATE TABLE IDIQADM.spsvcs_id_link_count_delta ( " +
+	   " identity_id VARCHAR(128) PRIMARY KEY NOT NULL, " +
+	   " num_links   INT NOT NULL, " +
+	   " prev_links  INT NOT NULL, " +
+	   " count_time  VARCHAR(16) " +
+	   ")";   
+	tblToDDLMap.put(tableName, tableDDL);     
+
+
+	// Use the DB MetaData to check if our new/custom Link Counts tables exist.
+	DatabaseMetaData dbm = dbCxn.getMetaData();
+log.info("pankaj 444 " + clrMessage);
+
+	// Loop through each of the tables we want to create.
+	// For each one check if it exists and if it does not exist then create it.
+	for (String tableName : tblToDDLMap.keySet()) {
+
+log.info("pankaj 444 A  " + clrMessage);
+
+	   String tableDDL = tblToDDLMap.get(tableName);
+log.info("pankaj 444 B " + clrMessage);
+	   
+	   // If it does not exist then create it before moving forward.
+	   ResultSet tables = dbm.getTables(null, null, tableName, null);
+log.info("pankaj 444 C " + clrMessage);
+	   if (tables.next()) {
+		  log.info("The table " + tableName + " already exists.");
+	   } else {
+		
+		  log.info("The table " + tableName + " does not exist, creating it.");
+	  
+		  // Create the table because it does not already exist.
+		/*  try {
+			 Statement stmt = dbCxn.createStatement();
+			 stmt.executeUpdate(tableDDL);
+		  } catch (Exception ex) {
+			 log.error("pankaj Exception here " + ex);
+			 return ex;
+		  }	*/
+	   }
+	}    
+
+log.info("pankaj 555  " + clrMessage);
+
+	// Purge the contents of the spsvcs_id_link_count_curr table.
+	// This clears it out so we can re-populate it with the current counts.
+	String sqlQuery = "DELETE FROM IDIQADM.spsvcs_id_link_count_curr WHERE 1=1";
+	PreparedStatement statement = dbCxn.prepareStatement(sqlQuery);
+	int result = statement.executeUpdate();
+log.info("pankaj 666  " + clrMessage);
+	log.info("Rows purged from _curr table: " + result);
+	statement.close();   
+
+	// Next we populate the current counts of rows.
+	// This is equivalent to the following SQL:
+	// SELECT idt.name, idt.id, COUNT(link.id) as numAccounts 
+	//   FROM spt_link as link JOIN spt_identity as idt 
+	//     ON link.identity_id = idt.id GROUP BY idt.id;
+log.info("pankaj 777  " + clrMessage);
+	String sqlQuery = "INSERT INTO IDIQADM.spsvcs_id_link_count_curr " + 
+	   "SELECT idt.id identity_id, COUNT(link.id) num_links, " + 
+	   "null count_time " +
+	   "FROM spt_link link " +
+	   "JOIN spt_identity idt ON link.identity_id = idt.id GROUP BY idt.id";
+
+	PreparedStatement statement = dbCxn.prepareStatement(sqlQuery);
+log.info("pankaj 888  " + sqlQuery);
+	int result = statement.executeUpdate();
+log.info("pankaj 999  " + clrMessage);
+	log.info("Rows populated in _curr table: " + result);
+log.info("pankaj 99999  "+ clrMessage);
+	statement.close();
+log.info("pankaj 111111 " + clrMessage);
+
+	// Clear out the deltas table.
+	String sqlQuery = "DELETE FROM IDIQADM.spsvcs_id_link_count_delta WHERE 1=1";
+	PreparedStatement statement = dbCxn.prepareStatement(sqlQuery);
+	int result = statement.executeUpdate();
+	log.info("Rows purged from _delta table: " + result);
+	statement.close();      
+log.info("pankaj 22222 " + clrMessage);
+
+	// Now count the number of rows from the previous execution.  If there are
+	// no rows then this is the first run.  If there are records then we compare
+	// them to the latest counts.
+	int prevRows = 0;
+	String sqlQuery = "SELECT COUNT(*) AS num_rows FROM IDIQADM.spsvcs_identity_link_count";
+	PreparedStatement statement = dbCxn.prepareStatement(sqlQuery);
+	ResultSet rset = statement.executeQuery();
+	if(rset.next()){
+		prevRows = rset.getInt(1);
+	}
+	statement.close();
+	log.info("Rows counted from _count table: " + prevRows);   
+log.info("pankaj 333333 " + clrMessage);
+
+	if (0 == prevRows) { 
+
+	   // Assume that the previous rows was not populated before.  Everything
+	   // we process the first time is assumed that nothing has changed; we have
+	   // no records of deletions to detect.  We simply populate the _count table
+	   // with the content of the _curr table and leave the _delta table as 
+	   // empty.
+	   
+	   String sqlQuery = "INSERT INTO IDIQADM.spsvcs_identity_link_count " +
+		  " (identity_id, num_links, count_time) " + 
+		  " SELECT identity_id, num_links, count_time " +
+		  "   FROM IDIQADM.spsvcs_id_link_count_curr";  
+	   PreparedStatement statement = dbCxn.prepareStatement(sqlQuery);
+	   int result = statement.executeUpdate();
+	   log.info("Rows inserted into _count table: " + result);
+	   statement.close();
+		  
+	} else {
+
+	   // If rows exist in the _count table then we need to do some comparisons
+	   // between the _count and the _curr tables.  The differences will get 
+	   // inserted into the delta table.  
+	   
+	   String sqlQuery = "" +
+		  " INSERT INTO IDIQADM.spsvcs_id_link_count_delta " +
+		  "        (identity_id, num_links, prev_links) " +
+		  " SELECT cur.identity_id, cur.num_links, cnt.num_links AS prev_links " +  
+		  "   FROM IDIQADM.spsvcs_identity_link_count  cnt " + 
+		  "   JOIN IDIQADM.spsvcs_id_link_count_curr cur " + 
+		  "     ON ((cnt.identity_id = cur.identity_id) AND " + 
+		  "         (cnt.num_links  <> cur.num_links)      ) "; 
+	   
+	   PreparedStatement statement = dbCxn.prepareStatement(sqlQuery);
+	   int result = statement.executeUpdate();
+	   log.info("Rows inserted into _delta table: " + result);
+	   statement.close();      
+	   
+	}
+
+	// At the end of the cycle copy the _curr table over to _count test.
+	// We leave the contents of the delta table populated for later review.
+	String sqlQuery = "DELETE FROM IDIQADM.spsvcs_identity_link_count WHERE 1=1";
+	PreparedStatement statement = dbCxn.prepareStatement(sqlQuery);
+	int result = statement.executeUpdate();
+	log.info("Rows purged from _curr table: " + result);
+	statement.close();   
+
+	String sqlQuery = "" +
+	   " INSERT INTO IDIQADM.spsvcs_identity_link_count " +
+	   "             (identity_id, num_links, count_time) " +
+	   " SELECT identity_id, num_links, count_time " + 
+	   "   FROM IDIQADM.spsvcs_id_link_count_curr";
+
+	PreparedStatement statement = dbCxn.prepareStatement(sqlQuery);
+	int result = statement.executeUpdate();
+	log.info("Rows moved from _curr to _count table: " + result);
+	statement.close();
+
+	// For each Identity in the deltas table we need to set the 
+	// "hasRecentlyUpdatedAccounts" attribute to true.
+	int numDeltasFlagged = 0;
+
+	String sqlQuery = "" +
+	   "SELECT identity_id, num_links, prev_links " +
+	   "  FROM IDIQADM.spsvcs_id_link_count_delta";
+	   
+	PreparedStatement prepStmt = dbCxn.prepareStatement(sqlQuery);
+	ResultSet rs = prepStmt.executeQuery();
+	while (rs.next()) {
+
+	   String identityId = rs.getString(1);
+	   int numLinks      = rs.getInt(2);
+	   int prevLinks     = rs.getInt(3);
+
+	   log.info("Delta Identity: " + identityId + 
+				" numLinks: "      + numLinks + 
+				" prevLinks: "     + prevLinks);
+				 
+	   Identity id = context.getObjectById(Identity.class, identityId);
+	   if (null == id) {
+		  log.warn("Could not find Identity for delta: " + identityId);
+	   } else {
+		  id.setAttribute("hasRecentlyUpdatedAccounts", "true");
+		  context.saveObject(id);
+		  numDeltasFlagged++;   
+	   }
+	   
+	   if ((numDeltasFlagged % identityBlockSize) == 0) {
+		  log.info("Processed " + numDeltasFlagged + " link deleted Identity cubes.");
+		  context.commitTransaction(); 
+		  context.decache(); 
+	   }    
+				 
+	}
+	prepStmt.close();
+	context.commitTransaction();
+	context.decache(); 
+
+	String delMessage = "Found Link deletions on " + numDeltasFlagged + " cubes.";
+	log.info(delMessage);
+
+	// For IdentityIQ 6.3+ the RuleExecutor will pass in the taskResult:
+	if ((void != taskResult) && (null != taskResult)) {   
+	  // Update the TaskResult with the number of Identities cleared and set.
+	  taskResult.addMessage(new Message(delMessage, null));  
+	}  
+
+	log.info("Done processing hasRecentlyUpdatedAccounts extended attributes."); 
+	log.info("End of rule cob-Rule-StandAloneIdentifyCubesWithRecentlyUpdatedAccounts");
+
+	// Rules run by the RuleExecutor must return a success string.	
+	return "Success: " + setMessage;  
+	
+	]]></Source>
+</Rule>

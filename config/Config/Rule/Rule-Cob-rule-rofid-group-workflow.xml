@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-ROFID-Group-Workflow">
+  <Source><![CDATA[
+import sailpoint.api.IdentityService;
+import sailpoint.object.Application;
+import sailpoint.object.Identity;
+import sailpoint.object.Link;
+import sailpoint.tools.GeneralException;
+
+
+    public static String getLinkNativeIdentity(String idName) throws GeneralException {
+            String nativeIdentity="";
+            Identity id = context.getObjectByName(Identity.class,idName);
+            IdentityService identityService= new IdentityService(context);
+            Application app= context.getObjectByName(Application.class,"Dev_ROFID");
+            List rofidLinks= identityService.getLinks(id,app);
+            for(Link eachLink: rofidLinks){
+                nativeIdentity=eachLink.getNativeIdentity();
+                break;
+            }
+            
+            return nativeIdentity;
+            
+          }
+  
+  ]]></Source>
+</Rule>

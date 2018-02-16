@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="Suspend Identity Entry Form">
+  <Button action="next" label="Continue"/>
+  <Button action="back" label="Cancel Request"/>
+  <Section name="Identity Information" type="text">
+    <Attributes>
+      <Map>
+        <entry key="hideNulls" value="true"/>
+      </Map>
+    </Attributes>
+    <Field displayName="Select User Name: " name="suspUser" type="Identity"/>
+    <Field dependencies="suspUser" displayName="Selected User Display Name: " name="userDisplayName" readOnly="true">
+      <Script>
+        <Source><![CDATA[
+        return susUser.getDisplayName();
+        ]]></Source>
+      </Script>
+    </Field>
+    <Field dependencies="suspUser" displayName="Email: " name="userEmail" readOnly="true">
+      <Script>
+        <Source><![CDATA[
+        return suspUser.getEmail();
+        ]]></Source>
+      </Script>
+    </Field>
+    <Field displayName="Suspension Date: " name="suspensionDate" type="date"/>
+  </Section>
+</Form>

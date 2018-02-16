@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="COB-Form-Create-Contractor">
+  <Attributes>
+    <Map>
+      <entry key="labelAlign" value="left"/>
+      <entry key="pageTitle" value="Sponsored Account Creation Form"/>
+    </Map>
+  </Attributes>
+  <Section label="Important" name="userInstructions" type="text">
+    <Field displayName="Terms and Conditions" name="instructions" required="true">
+      <Script>
+        <Source><![CDATA[
+      return  "This form is used to request a new role within the AccessBoston system for a person who is either is not on the payroll or an employee who needs additional access not provided by their primary role. The form must be submitted by the Requestor. The full name and date of birth must match government issued ID. Fields marked with a * are required. If you have questions call the DoIT Service Desk at 617-635-7378 or DoITServiceDesk@boston.gov.";
+      ]]></Source>
+      </Script>
+    </Field>
+  </Section>
+  <Section>
+    <Field displayName="Role Type" name="accountType" readOnly="true"/>
+  </Section>
+  <Section columns="2" label="Individual Being Authorized">
+    <Field displayName="First Name" name="firstName" required="true" type="String">
+      <ValidationScript>
+        <Source><![CDATA[
+        import java.util.*;
+  
+		if (value != null && value.contains(" ")){
+          
+          
+          return "Error: The field value contains whitespaces"; 
+          }
+         
+        
+          if(value != null){
+          if (value.length() > 64) {
+					return "Error: The field value can not be longer than 64 characters";
+				} 
+          
+					for (int i = 0; i < value.length(); i++) {
+						char ch = value.charAt(i);
+						if (!Character.isLetterOrDigit(ch) && ch != ' ') {
+							return "Error: The field value has special character(s)";
+							break;
+						}
+					}
+          }
+				
+        
+		
+			
+		
+		
+        ]]></Source>
+      </ValidationScript>
+    </Field>
+    <Field displayName="Last Name" name="lastName" required="true" type="String">
+      <ValidationScript>
+        <Source><![CDATA[
+          import java.util.*;
+        
+  	if (value != null && value.contains(" ")){
+          
+          
+          return "Error: The field value contains whitespaces"; 
+          }
+       
+        
+          if(value != null){
+            if (value.length() > 64) {
+					return "Error: The field value can not be longer than 64 characters";
+				}
+          
+					for (int i = 0; i < value.length(); i++) {
+						char ch = value.charAt(i);
+						if (!Character.isLetterOrDigit(ch) && ch != ' ') {
+							return "Error: The field value has special character(s)";
+							break;
+						}
+					}
+          }
+				
+        
+		
+
+        ]]></Source>
+      </ValidationScript>
+    </Field>
+    <Field displayName="Middle Name" name="middleInitial" type="String"/>
+    <Field displayName="Sponsoring Manager" name="sponsorManager" readOnly="true" value="ref:launcherManagerDisplayName"/>
+    <Field displayName="Department" name="departmentId" readOnly="true" type="String">
+      <Script>
+        <Source><![CDATA[
+         import sailpoint.object.Identity;
+         import sailpoint.object.Custom;
+         import java.util.*;
+          
+          
+         Identity identObj = context.getObjectByName(Identity.class, launcher);
+         Custom cusObj = context.getObjectByName(Custom.class, "COB-Custom-Department-Mapping");
+         String deptFullName = "";
+         Map deptMap = (Map) cusObj.get("Id-Name-Mapping");
+         String deptId =identObj.getStringAttribute("departmentCode");
+        // log.warn("deptId::"+deptId);
+         if(deptId != null){
+            if (deptMap.containsKey(deptId)) {
+
+             deptFullName = deptMap.get(deptId) + "-" + deptId;
+            // log.warn("deptFullName::"+deptFullName);
+         }else{
+          
+             return "NA"+"-"+deptId;
+          }
+
+        
+    }
+    return deptFullName; 
+      ]]></Source>
+      </Script>
+    </Field>
+    <Field defaultValue="Yes" displayName="Does this role require Boston.gov email address?" displayType="radio" name="cobEmailRequired" postBack="true" type="string">
+      <AllowedValues>
+        <String>Yes</String>
+        <String>No</String>
+      </AllowedValues>
+    </Field>
+    <Field displayName="Company E-Mail" name="companyEmail" required="true" type="string">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source><![CDATA[
+				  String cobEmailRequired = identityModel.get("cobEmailRequired");
+				  if (cobEmailRequired!=null){
+					if(cobEmailRequired.equals("No")){
+					return false;
+				  }
+				}
+					return true;
+					]]></Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+      <ValidationScript>
+        <Source><![CDATA[
+			   import sailpoint.tools.Message;
+			   import sailpoint.object.*;
+			   import java.util.regex.Matcher;
+			   import java.util.regex.Pattern;
+		   
+			   List messages = new ArrayList();
+			   Message msg = new Message();
+			   QueryOptions op = new QueryOptions();
+			   op.addFilter(Filter.eq("email",value));
+			   List users = context.getObjects(Identity.class,op);
+			   if(users!=null && users.size()>0)
+				 msg.setKey("User with this email already exists");
+				messages.add(msg);
+				return messages;  
+			  ]]></Source>
+      </ValidationScript>
+    </Field>
+    <Field displayName="Confirm Company Email" name="companyEmailConfirm" type="string">
+      <Attributes>
+        <Map>
+          <entry key="hidden">
+            <value>
+              <Script>
+                <Source><![CDATA[
+					String cobEmailRequired = identityModel.get("cobEmailRequired");
+					if (cobEmailRequired!=null){
+						if(cobEmailRequired.equals("No")){
+						return false;
+						}
+					}
+					return true;
+				]]></Source>
+              </Script>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+      <ValidationScript>
+        <Source><![CDATA[
+		
+		String noMatch = "Does not match Contractor Company E-Mail field.";
+		String companyEmail = identityModel.get("companyEmail");
+		if (companyEmail!=null){	
+			if (!companyEmail.equals(value)){
+			return noMatch;
+			}
+	
+		} else if (value != null){
+		return noMatch;
+		}
+	    ]]></Source>
+      </ValidationScript>
+    </Field>
+    <Field dependencies="departmentId" displayName="Location" displayType="combobox" name="location" required="true">
+      <AllowedValuesDefinition>
+        <Script>
+          <Source><![CDATA[
+          import sailpoint.object.Custom;
+          import java.util.*;
+          
+        String idLocStr=departmentId;
+        log.warn("idLocStr::"+idLocStr);
+        Custom customObj = context.getObjectByName(Custom.class,"COB-Custom-Dept-Location-Mapping");
+        Map deptLocMap =(Map) customObj.get("DeptMapping");
+        List locList= new ArrayList();
+        if(deptLocMap.containsKey(idLocStr)){
+            locList=(List) deptLocMap.get(idLocStr);
+            log.warn("locList::"+locList);
+        }
+            return locList;
+          
+          
+          ]]></Source>
+        </Script>
+      </AllowedValuesDefinition>
+    </Field>
+    <Field displayName="Date Of Birth" name="cobDob" required="true" type="date">
+      <Script>
+        <Source><![CDATA[
+      import java.util.Date;
+        
+        Date date = new Date();
+        return date;
+
+        ]]></Source>
+      </Script>
+    </Field>
+    <Field displayName="Start Date" name="cobHireDate" required="true" type="date">
+      <Script>
+        <Source><![CDATA[
+      import java.util.Date;
+        
+        Date date = new Date();
+        return date;
+
+        ]]></Source>
+      </Script>
+    </Field>
+    <Field displayName="End Date" helpKey="Can only be up to one year from Start Date." name="contractEndDate" required="true" type="date">
+      <Script>
+        <Source><![CDATA[
+      import java.util.Date;
+        
+        Date date = new Date();
+        return date;
+
+        ]]></Source>
+      </Script>
+      <ValidationScript>
+        <Source><![CDATA[	
+		import java.util.Date;
+    import java.util.Calendar;
+		
+		Date today = new Date();
+    Date startDate= identityModel.get("cobHireDate");
+    log.warn("startDate"+startDate);
+    Calendar cal = Calendar.getInstance();
+		cal.setTime(startDate);
+		cal.add(Calendar.YEAR, 1); 
+		Date nextYear = cal.getTime();
+		log.warn("nextYear::"+nextYear);
+   
+		if (value!=null && value.before(today)){
+			return "Account expiration date can only be in the future.";
+		}
+		
+   if(value != null && value.after(nextYear)){
+          return "Account expiration date can only be within 1 year from the start date.";
+          }
+		]]></Source>
+      </ValidationScript>
+    </Field>
+    <Field displayName="Telephone No." helpKey="Enter in +x-xxxxxxxxxx format" name="phone" type="string">
+      <ValidationScript>
+        <Source><![CDATA[
+			   import sailpoint.tools.Message;
+			   import sailpoint.object.Identity;
+			   import java.util.regex.Matcher;
+			   import java.util.regex.Pattern;
+		   	
+		   		//Phone number format xxx-xxx-xxxx;
+		   	   String regex ="^\\+[0-9]{1,3}\\-[0-9]{4,14}$";		
+			   List messages = new ArrayList();
+			   Message msg = new Message();
+			   Pattern pattern = Pattern.compile(regex);
+          	   if(value!=null){
+              		Matcher matcher = pattern.matcher(value);
+                		if (!matcher.matches()) {
+                  			msg.setKey("Phone number format should be +x-xxxxxxxxxx.");		
+                			messages.add(msg);
+                			return messages;  
+         				} 
+              		}
+        	 	else
+          			return null; 
+			  ]]></Source>
+      </ValidationScript>
+    </Field>
+  </Section>
+  <Button action="next" label="Next"/>
+  <Button action="back" label="Back"/>
+  <Button action="cancel" label="Cancel"/>
+</Form>

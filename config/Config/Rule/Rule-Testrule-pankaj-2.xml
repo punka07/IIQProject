@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="TestRule-Pankaj-2">
+  <Source><![CDATA[
+  import sailpoint.object.*;
+ 
+  /*
+  String idName ="cobTestUser";
+  Identity identObj =context.getObjectByName(Identity.class,idName);
+  
+  if(identObj != null){
+    
+    //return identObj;
+    identObj.setAttribute("middleName","First");
+    context.saveObject(identObj);
+		context.commitTransaction();
+  }
+   */ 
+  Custom customObj =context.getObjectByName(Custom.class,"COB-Custom-UserTypes");
+  if(customObj != null){
+    log.warn("list::"+customObj.get("userTypes"));
+   return customObj.get("userTypes"); 
+  }
+  ]]></Source>
+</Rule>

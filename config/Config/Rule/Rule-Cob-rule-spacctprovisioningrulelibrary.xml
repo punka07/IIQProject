@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="COB-Rule-SpAcctProvisioningRuleLibrary">
+  <Source><![CDATA[
+  import sailpoint.object.*;
+  import sailpoint.api.*;
+  import sailpoint.tools.*;
+  
+ 
+  
+  public String getPasswordFor_S_Account() throws GeneralException {
+		String SPECIAL_CHARACTERS = "!@#$%?~_+=";
+		PasswordGenerator psswdGen = new PasswordGenerator(context);
+		PasswordPolicy policy = new PasswordPolicy();
+		Map passwordConstraints = new HashMap();
+    passwordConstraints.put("passwordHistory",5);
+		passwordConstraints.put("passwordMaxLength", 10);
+		passwordConstraints.put("passwordMinLength", 10);
+    passwordConstraints.put("passwordMinCharType", 3);
+		passwordConstraints.put("passwordMinNumeric", 1);
+		passwordConstraints.put("passwordMinSpecial", 1);
+		passwordConstraints.put("passwordMinLower", 1);
+		passwordConstraints.put("passwordMinUpper", 1);
+		// passwordConstraints.put("passwordSpecialCharacters", "!@#$%?~_+=");
+		policy.setPasswordConstraints(passwordConstraints);
+		char[] password = psswdGen.generatePassword(policy).toCharArray();
+		StringBuilder sb = new StringBuilder();
+		for (char ch : password) {
+			if (Character.isLetterOrDigit(ch)) {
+				sb.append(ch);
+			} else if (SPECIAL_CHARACTERS.indexOf(ch) != -1) {
+				sb.append(ch);
+			} else {
+				sb.append(SPECIAL_CHARACTERS.charAt((int) Math.round(Math.random() * (SPECIAL_CHARACTERS.length() - 1))));
+			}
+		}
+		return sb.toString();
+	}
+  
+  public String getSponsoredAcctUniqueId() throws GeneralException{
+    
+    
+     String SALTCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+        StringBuilder salt = new StringBuilder();
+        Random rnd = new Random();
+        while (salt.length() < 6) { // length of the random string.
+            int index = (int) (rnd.nextFloat() * SALTCHARS.length());
+            salt.append(SALTCHARS.charAt(index));
+        }
+        String saltStr = salt.toString();
+        return saltStr;
+  }
+  
+  /**TEST***/
+  return getPasswordFor_S_Account();
+  
+  ]]></Source>
+</Rule>
